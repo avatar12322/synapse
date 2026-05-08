@@ -1,0 +1,52 @@
+{
+  "auth": {
+    "login": "Zaloguj się",
+    "register": "Utwórz konto",
+    "loginSubtitle": "Połącz się. Odkrywaj. Odłóż telefon.",
+    "registerSubtitle": "Dołącz do Synapse i zacznij misje w realu.",
+    "email": "Email",
+    "username": "Nazwa użytkownika",
+    "password": "Hasło",
+    "confirmPassword": "Potwierdź hasło",
+    "loginButton": "Wejdź do Synapse",
+    "registerButton": "Dołącz do Synapse",
+    "welcomeBack": "Witaj z powrotem, odkrywco",
+    "welcome": "Rozpocznij swoją podróż",
+    "noAccount": "Nie masz konta?",
+    "hasAccount": "Masz już konto?",
+    "signUp": "Zarejestruj się",
+    "signIn": "Zaloguj się"
+  },
+  "common": {
+    "loading": "Ładowanie...",
+    "error": "Coś poszło nie tak",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "confirm": "Potwierdź",
+    "back": "Wróć"
+  },
+  "nav": {
+    "home": "Główna",
+    "missions": "Misje",
+    "friends": "Znajomi",
+    "profile": "Profil"
+  },
+  "home": {
+    "title": "Twoje misje",
+    "noMissions": "Brak aktywnych misji. Sprawdź ponownie wkrótce!",
+    "findMatch": "Znajdź dopasowanie"
+  },
+  "missions": {
+    "title": "Misje",
+    "status": {
+      "pending": "Oczekuje",
+      "accepted": "Zaakceptowana",
+      "inProgress": "W trakcie",
+      "completed": "Ukończona",
+      "expired": "Wygasła"
+    },
+    "lockPhone": "Zablokuj telefon, aby zacząć",
+    "unlockToComplete": "Odblokuj, aby ukończyć",
+    "discount": "Twój rabat"
+  }
+}

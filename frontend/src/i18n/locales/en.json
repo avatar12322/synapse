@@ -1,0 +1,52 @@
+{
+  "auth": {
+    "login": "Sign In",
+    "register": "Create Account",
+    "loginSubtitle": "Connect. Explore. Disconnect from your phone.",
+    "registerSubtitle": "Join Synapse and start real-world missions.",
+    "email": "Email",
+    "username": "Username",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "loginButton": "Enter Synapse",
+    "registerButton": "Join Synapse",
+    "welcomeBack": "Welcome back, explorer",
+    "welcome": "Begin your journey",
+    "noAccount": "No account?",
+    "hasAccount": "Already have an account?",
+    "signUp": "Sign up",
+    "signIn": "Sign in"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back"
+  },
+  "nav": {
+    "home": "Home",
+    "missions": "Missions",
+    "friends": "Friends",
+    "profile": "Profile"
+  },
+  "home": {
+    "title": "Your Missions",
+    "noMissions": "No active missions. Check back soon!",
+    "findMatch": "Find a Match"
+  },
+  "missions": {
+    "title": "Missions",
+    "status": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "expired": "Expired"
+    },
+    "lockPhone": "Lock Phone to Start",
+    "unlockToComplete": "Unlock to Complete",
+    "discount": "Your Discount"
+  }
+}
