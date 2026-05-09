@@ -15,7 +15,6 @@ namespace Synapse.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterDatabase()
-                .Annotation("Npgsql:PostgresExtension:h3", ",,")
                 .Annotation("Npgsql:PostgresExtension:postgis", ",,")
                 .Annotation("Npgsql:PostgresExtension:vector", ",,");
 

@@ -50,6 +50,7 @@ else
 
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.UseVector();
+dataSourceBuilder.UseNetTopologySuite();
 var dataSource = dataSourceBuilder.Build();
 
 builder.Services.AddDbContext<SynapseDbContext>(o =>

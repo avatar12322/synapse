@@ -8,7 +8,7 @@ import logging
 import math
 from typing import Any
 
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 from typing_extensions import TypedDict
@@ -74,10 +74,10 @@ async def call_matchmaker_claude(state: MatchmakerState) -> MatchmakerState:
 
     prompt = "\n".join(filter(None, [profile_a, profile_b, mood_a, mood_b, "", "Venues:", venues_text]))
 
-    llm = ChatAnthropic(
+    llm = ChatGoogleGenerativeAI(
         model=settings.reasoning_model,
-        api_key=settings.anthropic_api_key,
-        max_tokens=768,
+        google_api_key=settings.google_api_key,
+        max_output_tokens=768,
     )
     messages = [
         SystemMessage(content=MATCHMAKER_SYSTEM),

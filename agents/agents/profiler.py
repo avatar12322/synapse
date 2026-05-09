@@ -8,7 +8,6 @@ import logging
 from typing import Any
 
 import asyncpg
-from langchain_anthropic import ChatAnthropic
 from langgraph.graph import StateGraph, END
 from sentence_transformers import SentenceTransformer
 from typing_extensions import TypedDict

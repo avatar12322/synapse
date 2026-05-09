@@ -4,12 +4,20 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Home, Map, Users, User } from 'lucide-react';
+import { Home, Map, Users, User, ShieldCheck } from 'lucide-react';
+import { authStorage } from '@/lib/auth';
+import { useState, useEffect } from 'react';
 
-const NAV_LINKS = [
+const USER_NAV_LINKS = [
   { href: '/', icon: Home, labelKey: 'nav.home', color: 'text-blue-400' },
   { href: '/missions', icon: Map, labelKey: 'nav.missions', color: 'text-purple-400' },
   { href: '/friends', icon: Users, labelKey: 'nav.friends', color: 'text-green-400' },
+  { href: '/profile', icon: User, labelKey: 'nav.profile', color: 'text-yellow-400' },
+] as const;
+
+const BUSINESS_NAV_LINKS = [
+  { href: '/', icon: Home, labelKey: 'nav.home', color: 'text-blue-400' },
+  { href: '/business/verify', icon: ShieldCheck, labelKey: 'nav.verify', color: 'text-emerald-400' },
   { href: '/profile', icon: User, labelKey: 'nav.profile', color: 'text-yellow-400' },
 ] as const;
 
@@ -17,13 +25,20 @@ export default function BottomNavigation() {
   const pathname = usePathname();
   const { t } = useTranslation();
   const shouldReduceMotion = useReducedMotion();
+  const [isBusiness, setIsBusiness] = useState(false);
+
+  useEffect(() => {
+    setIsBusiness(authStorage.isBusiness() || authStorage.isAdmin());
+  }, []);
 
   if (pathname.startsWith('/login') || pathname.startsWith('/register')) return null;
+
+  const navLinks = isBusiness ? BUSINESS_NAV_LINKS : USER_NAV_LINKS;
 
   return (
     <nav className="bg-gradient-to-r from-slate-800 via-gray-800 to-slate-800 border-t-2 border-purple-500 shadow-2xl backdrop-blur-lg">
       <div className="flex justify-around items-center h-16 max-w-6xl mx-auto px-2">
-        {NAV_LINKS.map(({ href, icon: Icon, labelKey, color }) => {
+        {navLinks.map(({ href, icon: Icon, labelKey, color }) => {
           const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
           return (
             <Link

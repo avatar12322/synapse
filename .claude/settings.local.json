@@ -7,7 +7,17 @@
       "PowerShell($pkg = Get-Content \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\\\\package.json\" | ConvertFrom-Json; Write-Output \"version: $\\($pkg.version\\)\"; Write-Output \"description: $\\($pkg.description\\)\")",
       "PowerShell(Get-ChildItem \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\" -Force | Where-Object { -not $_.PSIsContainer } | Select-Object Name | Head -20; Write-Output \"---DIRS---\"; Get-ChildItem \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\" -Force | Where-Object { $_.PSIsContainer } | Select-Object Name)",
       "PowerShell(Get-ChildItem \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\" -Force | Where-Object { -not $_.PSIsContainer } | Select-Object -First 20 -ExpandProperty Name)",
-      "PowerShell(Get-ChildItem \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\" -Force | Where-Object { $_.PSIsContainer } | Select-Object Name)"
+      "PowerShell(Get-ChildItem \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\" -Force | Where-Object { $_.PSIsContainer } | Select-Object Name)",
+      "Bash(Get-ChildItem -Path \"c:\\\\dev\\\\synapse\\\\agents\\\\\" -Recurse -Force | Select-Object -ExpandProperty FullName | Sort-Object)",
+      "Bash(Get-ChildItem -Path \"c:\\\\dev\\\\synapse\" -Directory)",
+      "Bash(Select-Object Name)",
+      "Bash(xargs grep -l \"seed\\\\|Seed\")",
+      "Bash(grep -E \"\\\\.\\(ts|js|tsx|jsx\\)$\")",
+      "Bash(xargs grep -l \"OnModelCreating\\\\|SeedData\")",
+      "Bash(npm install *)",
+      "Bash(node -e \"const p = require\\('./node_modules/next/package.json'\\); console.log\\(p.version\\)\")",
+      "Bash(dotnet ef *)",
+      "Bash(dotnet build *)"
     ]
   }
 }

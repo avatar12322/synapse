@@ -1,12 +1,12 @@
 """
-Scout agent — scores nearby venues for a given user profile using Claude reasoning.
+Scout agent — scores nearby venues for a given user profile using Gemini reasoning.
 Returns venues ranked by contextual fit (time of day, mood, category preference).
 """
 from __future__ import annotations
 import logging
 from typing import Any
 
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 from typing_extensions import TypedDict
@@ -39,11 +39,11 @@ def build_scout_prompt(state: ScoutState) -> ScoutState:
     return state
 
 
-async def call_claude(state: ScoutState) -> ScoutState:
-    llm = ChatAnthropic(
+async def call_gemini(state: ScoutState) -> ScoutState:
+    llm = ChatGoogleGenerativeAI(
         model=settings.reasoning_model,
-        api_key=settings.anthropic_api_key,
-        max_tokens=512,
+        google_api_key=settings.google_api_key,
+        max_output_tokens=512,
     )
     profile = state["user_profile"]
     venues_text = "\n".join(
@@ -75,7 +75,7 @@ async def call_claude(state: ScoutState) -> ScoutState:
 
 def build_scout_graph() -> Any:
     g = StateGraph(ScoutState)
-    g.add_node("scout", call_claude)
+    g.add_node("scout", call_gemini)
     g.set_entry_point("scout")
     g.add_edge("scout", END)
     return g.compile()

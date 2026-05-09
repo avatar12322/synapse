@@ -14,19 +14,26 @@ adaptuje wizję do realnego stacku scaffoldu (różni się od raportu — patrz 
 
 ## 1. Co już jest (stan repozytorium)
 
-Repo to scaffold z projektu „Questify" przekształcony w `Synapse`.
+Repo to scaffold z projektu „Questify" przekształcony w `Synapse`. **Fazy 0 i 1 ukończone.**
 
-| Warstwa     | Co jest                                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Backend     | [backend/](backend/) — **.NET 9** minimal API, EF Core 9, JWT (httpOnly cookie), Postgres + Redis (lub in-memory fallback). Clean Arch: Api/Core/Infrastructure |
-| Modele DB   | [User](backend/Core/Models/User/User.cs), [Business](backend/Core/Models/Business/Business.cs), [Mission](backend/Core/Models/Mission/Mission.cs), Friendship, Notification |
-| Frontend    | [frontend/](frontend/) — **Next.js 15** (Turbopack) + React 19 + TanStack Query + Tailwind v4 + Radix + framer-motion + i18next (PL/EN)               |
-| Mobile wrap | [capacitor.config.ts](frontend/capacitor.config.ts) — **Capacitor 8** (iOS + Android), appId `com.synapse.app`                                       |
-| Infra dev   | [docker-compose.yml](docker-compose.yml) — Postgres 16 + Redis 7 + Adminer                                                                            |
+| Warstwa          | Co jest                                                                                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend          | [backend/](backend/) — **.NET 9** minimal API, EF Core 9, JWT (httpOnly cookie), Postgres + Redis (lub in-memory fallback). Clean Arch: Api/Core/Infrastructure |
+| Modele DB        | [User](backend/Core/Models/User/User.cs), [Business](backend/Core/Models/Business/Business.cs), [Mission](backend/Core/Models/Mission/Mission.cs), [UserProfile](backend/Core/Models/User/UserProfile.cs), Friendship, Notification |
+| Endpointy        | `/api/missions` (CRUD + accept/lock/cancel/verify), `/api/businesses` (nearby + CRUD), `/api/match`, `/ws/presence` (WebSocket), `/api/stripe/*`, `/api/notifications` |
+| Baza danych      | Migracja `Phase1_InitialSchema` — PostGIS `geography(Point,4326)`, pgvector `vector(768)`, extensions: postgis / vector / h3. GIST spatial index. |
+| Frontend         | [frontend/](frontend/) — **Next.js 15** (Turbopack) + React 19 + TanStack Query + Tailwind v4 + Radix + framer-motion + i18next (PL/EN). Pełne UI misji: lista, detail (state machine), match flow, panel biznesu. |
+| Python agents    | [agents/](agents/) — **FastAPI + LangGraph**, 4 agenty (Profiler / Scout / Matchmaker / Orchestrator), Gemini 2.5 Flash, sentence-transformers (768-dim embeddings) |
+| Capacitor plugins | [frontend/native-plugins/](frontend/native-plugins/) — scaffoldy: `screen-lock-guard`, `presence-verifier`, `anti-spoof` (Swift + Kotlin + TS bridge) |
+| Mobile wrap      | [capacitor.config.ts](frontend/capacitor.config.ts) — **Capacitor 8** (iOS + Android), appId `com.synapse.app`                                       |
+| Infra dev        | [docker-compose.yml](docker-compose.yml) — custom Postgres 16 image (PostGIS + pgvector) + Redis 7 + Adminer + agents service (profil: agents)        |
 
-**Co NIE jest zrobione:** wszystkie endpointy mission/business poza modelami,
-warstwa AI (agents), warstwa geo (H3/sharding), integracje (POS, Stripe, KSeF),
-natywne pluginy mobilne (Screen Time, foreground service itd.), CI/CD.
+**Co NIE jest zrobione (pozostałe z Fazy 1):**
+- iOS Live Activity z timerem (ActivityKit + Dynamic Island) — plugin `mission-hud`
+- Android persistent foreground notification z licznikiem
+
+**Co NIE jest zrobione (Fazy 2–4):**
+warstwa integracji POS, KSeF 2.0, plugin NFC, Apple Watch/Wear OS companion, geosharding, Kafka, CI/CD.
 
 ---
 
@@ -110,21 +117,21 @@ i `android/` (Kotlin) + cienki TS-bridge. Lista do zbudowania:
 
 ## 5. Roadmap (4 fazy, każda zamknięta produktowo)
 
-### Faza 0 — Fundament (✅ częściowo gotowe)
-Auth + JWT, Postgres + Redis, podstawowe modele, Capacitor wired up.
-**Brakuje:** uruchomienie static export Next.js, dodanie `output: 'export'`,
-pierwszy `npx cap sync` na pustym webview, test buildu iOS i Android.
+### Faza 0 — Fundament (✅ ukończona)
+Auth + JWT, Postgres + Redis, podstawowe modele, Capacitor wired up, Next.js dev server działa.
 
-### Faza 1 — MVP w jednym mieście (Kraków, 6–10 lokali ręcznie onboardowanych)
-- [ ] Endpointy: `/missions`, `/businesses/nearby`, `/match`, `/presence` (WS)
-- [ ] PostGIS + pgvector + extension `h3` (h3-pg) w migracji
-- [ ] Mikroserwis `Synapse.Agents` (Python 3.13 + FastAPI + LangGraph) — 4 agenty z raportu (Profiler / Scout / Matchmaker / Orchestrator) + Claude Sonnet 4.6
-- [ ] Plugin `screen-lock-guard` na obu platformach + sandbox testowy
-- [ ] Plugin `presence-verifier` (geofence + STILL)
-- [ ] Plugin `anti-spoof` (App Attest + Play Integrity) — gate na każdym `/missions/complete`
-- [ ] Weryfikacja sprzedaży: **ręczna** (lokal wpisuje 6-cyfrowy kod w panel www) — bez integracji POS
-- [ ] Stripe Connect Standard + Apple/Google Pay + BLIK; pojedyncza prowizja per mission
-- [ ] Live Activity z timerem (iOS), persistent notification (Android)
+### Faza 1 — MVP w jednym mieście (Kraków, 6–10 lokali ręcznie onboardowanych) (✅ prawie ukończona)
+- [x] Endpointy: `/missions` (CRUD + accept/lock/cancel/verify), `/businesses/nearby`, `/api/match`, `/ws/presence` (WebSocket)
+- [x] PostGIS `geography(Point,4326)` + pgvector `vector(768)` + extension `h3` w migracji `Phase1_InitialSchema`
+- [x] Mikroserwis `Synapse.Agents` (Python 3.13 + FastAPI + LangGraph) — 4 agenty (Profiler / Scout / Matchmaker / Orchestrator) + Claude Sonnet 4.6
+- [x] Plugin `screen-lock-guard` scaffold (FamilyControls iOS + Foreground Service Android)
+- [x] Plugin `presence-verifier` scaffold (CoreLocation + geofence iOS, ActivityRecognitionClient Android)
+- [x] Plugin `anti-spoof` scaffold (DCAppAttestService iOS, Play Integrity Android)
+- [x] Weryfikacja sprzedaży: **ręczna** — lokal wpisuje 6-cyfrowy kod w panel `/business/verify`
+- [x] Stripe Connect Standard — onboarding link + ChargeCommission via Transfer
+- [x] Frontend: lista misji, detail z state machine (Pending→Accepted→InProgress→Completed), match flow, panel biznesowy
+- [ ] iOS Live Activity z timerem (ActivityKit + Dynamic Island) — plugin `mission-hud` — **pozostało**
+- [ ] Android persistent foreground notification z licznikiem — **pozostało**
 
 **Definition of done:** dwoje testerów dostaje misję, dochodzą do kawiarni, blokują telefony na 30 min, dostają zniżkę 15 % via kod, lokal akceptuje, Stripe wypłaca prowizję.
 

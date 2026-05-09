@@ -40,7 +40,7 @@ export default function NotificationBell() {
     const load = async () => {
       try {
         const data = await notificationApi.getUnread();
-        setNotifications(data);
+        setNotifications(Array.isArray(data) ? data : []);
       } catch { /* ignore */ }
     };
     load();

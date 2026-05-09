@@ -29,24 +29,96 @@
     "home": "Główna",
     "missions": "Misje",
     "friends": "Znajomi",
-    "profile": "Profil"
+    "profile": "Profil",
+    "verify": "Weryfikacja"
   },
   "home": {
     "title": "Twoje misje",
-    "noMissions": "Brak aktywnych misji. Sprawdź ponownie wkrótce!",
-    "findMatch": "Znajdź dopasowanie"
+    "noMissions": "Brak aktywnych misji. Znajdź dopasowanie, aby zacząć!",
+    "findMatch": "Znajdź dopasowanie",
+    "activeMissions": "Aktywne misje",
+    "viewAll": "Zobacz wszystkie"
   },
   "missions": {
     "title": "Misje",
+    "findMatch": "Znajdź dopasowanie",
+    "noMissions": "Brak aktywnych misji",
+    "noMissionsSubtext": "Dołącz do kolejki, aby dopasować się z kimś w pobliżu",
     "status": {
       "pending": "Oczekuje",
       "accepted": "Zaakceptowana",
       "inProgress": "W trakcie",
       "completed": "Ukończona",
-      "expired": "Wygasła"
+      "expired": "Wygasła",
+      "cancelled": "Anulowana"
     },
     "lockPhone": "Zablokuj telefon, aby zacząć",
     "unlockToComplete": "Odblokuj, aby ukończyć",
-    "discount": "Twój rabat"
+    "discount": "Twój rabat",
+    "myTurn": "Twoja kolej na akceptację",
+    "expiresIn": "Wygasa za"
+  },
+  "match": {
+    "title": "Znajdź dopasowanie",
+    "subtitle": "Dopasujemy Cię z kimś w pobliżu do realnej misji",
+    "findingLocation": "Pobieramy Twoją lokalizację...",
+    "searching": "Szukamy dopasowania...",
+    "searchingSubtext": "Dodano do kolejki — dostaniesz powiadomienie po dopasowaniu",
+    "matched": "Znaleziono dopasowanie!",
+    "matchedSubtext": "Otwieramy Twoją misję...",
+    "noVenues": "Brak lokali w pobliżu",
+    "noVenuesSubtext": "Spróbuj zwiększyć promień wyszukiwania lub wróć później",
+    "category": "Typ misji (opcjonalnie)",
+    "radius": "Promień wyszukiwania",
+    "startSearch": "Znajdź dopasowanie",
+    "locationError": "Nie można pobrać lokalizacji. Włącz dostęp do lokalizacji.",
+    "tryAgain": "Spróbuj ponownie",
+    "openMission": "Otwórz misję",
+    "categories": {
+      "any": "Dowolny",
+      "coffee": "Kawa",
+      "lunch": "Lunch",
+      "sports": "Sport",
+      "culture": "Kultura",
+      "learning": "Nauka",
+      "networking": "Networking"
+    }
+  },
+  "missionDetail": {
+    "venue": "Lokal",
+    "discount": "Rabat",
+    "lockRequired": "Wymagana blokada",
+    "minutes": "min",
+    "accept": "Zaakceptuj misję",
+    "lock": "Zablokuj telefony",
+    "waitingForPartner": "Czekam na akceptację partnera",
+    "youAccepted": "Zaakceptowałeś — czekam na partnera",
+    "bothAccepted": "Oboje zaakceptowali! Idźcie do lokalu.",
+    "goToVenue": "Otwórz w mapach",
+    "inProgress": "Misja w toku",
+    "timeElapsed": "Czas",
+    "timeRequired": "Wymagany czas",
+    "verificationCode": "Kod weryfikacyjny",
+    "showCodeToStaff": "Pokaż ten kod personelowi lokalu, aby ukończyć misję",
+    "timesUp": "Czas minął! Pokaż kod personelowi.",
+    "completed": "Misja ukończona!",
+    "completedSubtext": "Zdobyłeś {{percent}}% rabatu!",
+    "rewardInfo": "Pokaż ekran ukończonej misji przy kasie",
+    "cancel": "Anuluj misję",
+    "interestTags": "Wspólne zainteresowania",
+    "description": "Opis misji",
+    "copiedCode": "Kod skopiowany!",
+    "tapToCopy": "Dotknij, aby skopiować"
+  },
+  "business": {
+    "verifyTitle": "Weryfikacja misji",
+    "verifySubtitle": "Wprowadź 6-cyfrowy kod z aplikacji klienta",
+    "code": "Kod weryfikacyjny",
+    "codePlaceholder": "np. 482915",
+    "verify": "Zweryfikuj i ukończ",
+    "success": "Misja zweryfikowana!",
+    "successSubtext": "Misja #{{id}} jest ukończona. Prowizja zostanie przetworzona automatycznie.",
+    "error": "Nieprawidłowy lub wygasły kod, lub minimalny czas blokady nie został osiągnięty.",
+    "panelTitle": "Panel biznesu"
   }
 }

@@ -45,18 +45,6 @@ public static class MissionEndpoints
             return m is null ? Results.BadRequest("Cannot accept this mission.") : Results.Ok(m);
         });
 
-        // POST /api/missions/{id}/lock — both users call this when at venue and ready to lock phones
-        group.MapPost("/{id:int}/lock", async (
-            int id,
-            ClaimsPrincipal user,
-            IMissionService svc,
-            CancellationToken ct) =>
-        {
-            var userId = int.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var m = await svc.LockPhonesAsync(id, userId, ct);
-            return m is null ? Results.BadRequest("Cannot start lock phase for this mission.") : Results.Ok(m);
-        });
-
         // POST /api/missions/{id}/cancel
         group.MapPost("/{id:int}/cancel", async (
             int id,

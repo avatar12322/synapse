@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,7 +9,11 @@ import { Button } from '@/components/ui/button';
 
 export default function ProfilePage() {
   const { t } = useTranslation();
-  const user = authStorage.getUser();
+  const [user, setUser] = useState<Record<string, unknown> | null>(null);
+
+  useEffect(() => {
+    setUser(authStorage.getUser());
+  }, []);
 
   return (
     <div className="pt-6 pb-24">

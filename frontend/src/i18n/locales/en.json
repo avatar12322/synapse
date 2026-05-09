@@ -29,24 +29,96 @@
     "home": "Home",
     "missions": "Missions",
     "friends": "Friends",
-    "profile": "Profile"
+    "profile": "Profile",
+    "verify": "Verify"
   },
   "home": {
     "title": "Your Missions",
-    "noMissions": "No active missions. Check back soon!",
-    "findMatch": "Find a Match"
+    "noMissions": "No active missions. Find a match to start one!",
+    "findMatch": "Find a Match",
+    "activeMissions": "Active Missions",
+    "viewAll": "View all"
   },
   "missions": {
     "title": "Missions",
+    "findMatch": "Find a Match",
+    "noMissions": "No active missions",
+    "noMissionsSubtext": "Join the queue to get matched with someone nearby",
     "status": {
       "pending": "Pending",
       "accepted": "Accepted",
       "inProgress": "In Progress",
       "completed": "Completed",
-      "expired": "Expired"
+      "expired": "Expired",
+      "cancelled": "Cancelled"
     },
     "lockPhone": "Lock Phone to Start",
     "unlockToComplete": "Unlock to Complete",
-    "discount": "Your Discount"
+    "discount": "Your Discount",
+    "myTurn": "Your turn to accept",
+    "expiresIn": "Expires in"
+  },
+  "match": {
+    "title": "Find a Match",
+    "subtitle": "We'll match you with someone nearby for a real-world mission",
+    "findingLocation": "Getting your location...",
+    "searching": "Looking for a match...",
+    "searchingSubtext": "Added to queue — you'll be notified when matched",
+    "matched": "Match found!",
+    "matchedSubtext": "Opening your mission...",
+    "noVenues": "No venues nearby",
+    "noVenuesSubtext": "Try increasing your search radius or check back later",
+    "category": "Mission Type (optional)",
+    "radius": "Search Radius",
+    "startSearch": "Find Match",
+    "locationError": "Could not get your location. Please enable location access.",
+    "tryAgain": "Try Again",
+    "openMission": "Open Mission",
+    "categories": {
+      "any": "Any",
+      "coffee": "Coffee",
+      "lunch": "Lunch",
+      "sports": "Sports",
+      "culture": "Culture",
+      "learning": "Learning",
+      "networking": "Networking"
+    }
+  },
+  "missionDetail": {
+    "venue": "Venue",
+    "discount": "Discount",
+    "lockRequired": "Lock required",
+    "minutes": "min",
+    "accept": "Accept Mission",
+    "lock": "Lock Phones",
+    "waitingForPartner": "Waiting for your partner to accept",
+    "youAccepted": "You accepted — waiting for partner",
+    "bothAccepted": "Both accepted! Head to the venue.",
+    "goToVenue": "Open in Maps",
+    "inProgress": "Mission in progress",
+    "timeElapsed": "Time elapsed",
+    "timeRequired": "Required time",
+    "verificationCode": "Verification Code",
+    "showCodeToStaff": "Show this code to venue staff to complete your mission",
+    "timesUp": "Time's up! Show the code to staff.",
+    "completed": "Mission Complete!",
+    "completedSubtext": "You earned a {{percent}}% discount!",
+    "rewardInfo": "Show your completed mission screen at the counter",
+    "cancel": "Cancel Mission",
+    "interestTags": "Shared Interests",
+    "description": "Mission Brief",
+    "copiedCode": "Code copied!",
+    "tapToCopy": "Tap to copy"
+  },
+  "business": {
+    "verifyTitle": "Verify Mission",
+    "verifySubtitle": "Enter the 6-digit code shown in the customer's app",
+    "code": "Verification Code",
+    "codePlaceholder": "e.g. 482915",
+    "verify": "Verify & Complete",
+    "success": "Mission Verified!",
+    "successSubtext": "Mission #{{id}} is complete. Commission will be processed automatically.",
+    "error": "Invalid or expired code, or the minimum lock time hasn't been reached yet.",
+    "panelTitle": "Business Panel"
   }
 }

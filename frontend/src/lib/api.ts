@@ -60,6 +60,51 @@ export interface UserProfile {
   language: string;
 }
 
+export type MissionStatus = 'Pending' | 'Accepted' | 'InProgress' | 'Completed' | 'Expired' | 'Cancelled';
+
+export interface MissionSummary {
+  id: number;
+  title: string;
+  status: MissionStatus;
+  category: string;
+  businessName: string;
+  discountPercent: number;
+  expiresAt: string;
+  isMyTurn: boolean;
+}
+
+export interface Mission {
+  id: number;
+  title: string;
+  description: string;
+  status: MissionStatus;
+  category: string;
+  businessId: number;
+  businessName: string;
+  businessAddress: string;
+  businessLatitude: number;
+  businessLongitude: number;
+  userAId: number | null;
+  userBId: number | null;
+  userAAccepted: boolean;
+  userBAccepted: boolean;
+  discountDescription: string | null;
+  discountPercent: number;
+  verificationCode: string | null;
+  lockedAt: string | null;
+  completedAt: string | null;
+  requiredLockMinutes: number;
+  createdAt: string;
+  expiresAt: string;
+  interestTags: string | null;
+}
+
+export interface MatchResult {
+  status: 'matched' | 'searching' | 'no_venues';
+  missionId: number | null;
+  message: string | null;
+}
+
 export const notificationApi = {
   getUnread: () => apiRequest<Notification[]>('/notifications'),
   markAllRead: () => apiRequest<void>('/notifications/read-all', { method: 'POST' }),
@@ -67,4 +112,23 @@ export const notificationApi = {
 
 export const userApi = {
   getProfile: () => apiRequest<UserProfile>('/users/profile'),
+};
+
+export const missionApi = {
+  getAll: () => apiRequest<MissionSummary[]>('/missions'),
+  getById: (id: number) => apiRequest<Mission>(`/missions/${id}`),
+  accept: (id: number) => apiRequest<Mission>(`/missions/${id}/accept`, { method: 'POST' }),
+  cancel: (id: number) => apiRequest<Mission>(`/missions/${id}/cancel`, { method: 'POST' }),
+  verify: (code: string) => apiRequest<Mission>('/missions/verify', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  }),
+};
+
+export const matchApi = {
+  request: (latitude: number, longitude: number, category?: string, radiusMetres = 2000) =>
+    apiRequest<MatchResult>('/match', {
+      method: 'POST',
+      body: JSON.stringify({ latitude, longitude, category, radiusMetres }),
+    }),
 };

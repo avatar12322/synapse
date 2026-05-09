@@ -27,8 +27,7 @@ public class SynapseDbContext : DbContext
         modelBuilder.HasPostgresExtension("vector");
         // PostGIS is enabled via UseNetTopologySuite() in Program.cs
         modelBuilder.HasPostgresExtension("postgis");
-        // h3-pg: best-effort — requires custom postgres build in production
-        modelBuilder.HasPostgresExtension("h3");
+
 
         modelBuilder.Entity<User>(e =>
         {

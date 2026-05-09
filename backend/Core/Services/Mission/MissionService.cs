@@ -10,7 +10,6 @@ public interface IMissionService
     Task<MissionDto?> GetByIdAsync(int id, int requestingUserId, CancellationToken ct = default);
     Task<IEnumerable<MissionSummaryDto>> GetMyMissionsAsync(int userId, CancellationToken ct = default);
     Task<MissionDto?> AcceptAsync(int missionId, int userId, CancellationToken ct = default);
-    Task<MissionDto?> LockPhonesAsync(int missionId, int userId, CancellationToken ct = default);
     Task<MissionDto?> VerifyCompletionAsync(string code, int businessOwnerId, CancellationToken ct = default);
     Task<MissionDto?> CancelAsync(int missionId, int userId, CancellationToken ct = default);
     Task ExpireOldMissionsAsync(CancellationToken ct = default);
@@ -66,26 +65,12 @@ public class MissionService(SynapseDbContext db) : IMissionService
         if (m.UserBId == userId) m.UserBAccepted = true;
 
         if (m.UserAAccepted && m.UserBAccepted)
-            m.Status = MissionStatus.Accepted;
-
-        await db.SaveChangesAsync(ct);
-        return ToDto(m, userId);
-    }
-
-    public async Task<MissionDto?> LockPhonesAsync(int missionId, int userId, CancellationToken ct)
-    {
-        var m = await db.Missions.Include(x => x.Business)
-            .FirstOrDefaultAsync(x => x.Id == missionId, ct);
-
-        if (m is null || m.Status != MissionStatus.Accepted) return null;
-        if (m.UserAId != userId && m.UserBId != userId) return null;
-
-        m.Status = MissionStatus.InProgress;
-        m.LockedAt = DateTime.UtcNow;
-
-        // Generate verification code valid for (RequiredLockMinutes + 15) min buffer
-        m.VerificationCode = GenerateCode();
-        m.VerificationCodeExpiresAt = DateTime.UtcNow.AddMinutes(m.RequiredLockMinutes + 15);
+        {
+            m.Status = MissionStatus.InProgress;
+            m.LockedAt = DateTime.UtcNow;
+            m.VerificationCode = GenerateCode();
+            m.VerificationCodeExpiresAt = DateTime.UtcNow.AddMinutes(m.RequiredLockMinutes + 15);
+        }
 
         await db.SaveChangesAsync(ct);
         return ToDto(m, userId);
@@ -102,11 +87,6 @@ public class MissionService(SynapseDbContext db) : IMissionService
                 && x.Business.OwnerId == businessOwnerId, ct);
 
         if (m is null) return null;
-
-        // Check minimum lock time
-        if (m.LockedAt.HasValue
-            && (DateTime.UtcNow - m.LockedAt.Value).TotalMinutes < m.RequiredLockMinutes)
-            return null;
 
         m.Status = MissionStatus.Completed;
         m.CompletedAt = DateTime.UtcNow;
