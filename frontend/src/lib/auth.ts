@@ -10,7 +10,7 @@ export const authStorage = {
     return user ? JSON.parse(user) : null;
   },
 
-  setUser: (user: any) => {
+  setUser: (user: Record<string, unknown>) => {
     if (typeof window === 'undefined') return;
     Cookies.set(USER_KEY, JSON.stringify(user), { expires: 7 });
   },

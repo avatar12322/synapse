@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Pgvector.EntityFrameworkCore;
 using Synapse.Core.Models.User;
 using Synapse.Core.Models.Social;
 using Synapse.Core.Models.Notification;
@@ -12,6 +13,7 @@ public class SynapseDbContext : DbContext
     public SynapseDbContext(DbContextOptions<SynapseDbContext> options) : base(options) { }
 
     public DbSet<User> Users { get; set; }
+    public DbSet<UserProfile> UserProfiles { get; set; }
     public DbSet<Friendship> Friendships { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Business> Businesses { get; set; }
@@ -21,11 +23,33 @@ public class SynapseDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // Enable pgvector extension (migration will call CREATE EXTENSION IF NOT EXISTS vector)
+        modelBuilder.HasPostgresExtension("vector");
+        // PostGIS is enabled via UseNetTopologySuite() in Program.cs
+        modelBuilder.HasPostgresExtension("postgis");
+        // h3-pg: best-effort — requires custom postgres build in production
+        modelBuilder.HasPostgresExtension("h3");
+
         modelBuilder.Entity<User>(e =>
         {
             e.HasKey(u => u.Id);
             e.HasIndex(u => u.Email).IsUnique();
             e.HasIndex(u => u.Username).IsUnique();
+        });
+
+        modelBuilder.Entity<UserProfile>(e =>
+        {
+            e.HasKey(p => p.Id);
+            e.HasIndex(p => p.UserId).IsUnique();
+
+            e.HasOne(p => p.User)
+             .WithMany()
+             .HasForeignKey(p => p.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            // pgvector column with IVFFlat index (created after first batch of embeddings)
+            e.Property(p => p.Embedding)
+             .HasColumnType("vector(768)");
         });
 
         modelBuilder.Entity<Friendship>(e =>
@@ -61,6 +85,14 @@ public class SynapseDbContext : DbContext
             e.HasIndex(b => b.City);
             e.HasIndex(b => b.Category);
 
+            // Geography type gives metre-based distance calculations
+            e.Property(b => b.Location)
+             .HasColumnType("geography(Point, 4326)");
+
+            // GIST spatial index for ST_DWithin queries
+            e.HasIndex(b => b.Location)
+             .HasMethod("GIST");
+
             e.HasOne(b => b.Owner)
              .WithMany()
              .HasForeignKey(b => b.OwnerId)
@@ -73,6 +105,8 @@ public class SynapseDbContext : DbContext
             e.HasIndex(m => m.Status);
             e.HasIndex(m => new { m.UserAId, m.Status });
             e.HasIndex(m => new { m.UserBId, m.Status });
+            e.HasIndex(m => m.VerificationCode);
+            e.HasIndex(m => m.H3Index);
 
             e.HasOne(m => m.Business)
              .WithMany(b => b.Missions)

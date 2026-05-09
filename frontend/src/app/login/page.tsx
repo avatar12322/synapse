@@ -35,8 +35,8 @@ export default function LoginPage() {
       const data = await response.json();
       authStorage.setUser(data.user);
       router.push('/');
-    } catch (err: any) {
-      setError(err.message || 'Failed to login. Please check your credentials.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to login. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }

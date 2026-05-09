@@ -1,0 +1,23 @@
+{
+  "name": "@synapse/screen-lock-guard",
+  "version": "1.0.0",
+  "description": "Capacitor plugin — enforces phone lock during Synapse missions",
+  "main": "dist/plugin.cjs.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "unpkg": "dist/plugin.js",
+  "files": ["dist/", "ios/", "android/", "src/"],
+  "author": "Synapse",
+  "license": "UNLICENSED",
+  "peerDependencies": {
+    "@capacitor/core": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/core": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "capacitor": {
+    "ios": { "src": "ios" },
+    "android": { "src": "android" }
+  }
+}

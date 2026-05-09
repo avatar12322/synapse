@@ -39,8 +39,8 @@ export default function RegisterPage() {
       const data = await response.json();
       authStorage.setUser(data.user);
       router.push('/');
-    } catch (err: any) {
-      setError(err.message || 'Failed to register. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to register. Please try again.');
     } finally {
       setIsLoading(false);
     }

@@ -25,10 +25,19 @@ public class Mission
     public User.User? UserA { get; set; }
     public User.User? UserB { get; set; }
 
+    // Acceptance tracking — mission moves to Accepted when both are true
+    public bool UserAAccepted { get; set; } = false;
+    public bool UserBAccepted { get; set; } = false;
+
     // Discount/reward from the business
     [MaxLength(200)]
     public string? DiscountDescription { get; set; }
-    public int DiscountPercent { get; set; } = 0;
+    public int DiscountPercent { get; set; } = 15;
+
+    // 6-digit code the business staff enters to verify physical presence
+    [MaxLength(6)]
+    public string? VerificationCode { get; set; }
+    public DateTime? VerificationCodeExpiresAt { get; set; }
 
     // Phone-lock completion tracking
     public DateTime? LockedAt { get; set; }
@@ -38,17 +47,27 @@ public class Mission
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime ExpiresAt { get; set; } = DateTime.UtcNow.AddHours(24);
 
+    // Stripe payment fields
+    [MaxLength(100)]
+    public string? StripePaymentIntentId { get; set; }
+    public int CommissionAmountCents { get; set; } = 0;
+    public bool CommissionPaid { get; set; } = false;
+
     // AI generation metadata
     public string? AiPromptUsed { get; set; }
-    public string? InterestTags { get; set; } // JSON array of shared interests
+    public string? InterestTags { get; set; }  // JSON array of shared interests
+
+    // H3 geo index (phase 3 sharding prep — set at creation from business location)
+    [MaxLength(20)]
+    public string? H3Index { get; set; }
 }
 
 public enum MissionStatus
 {
-    Pending = 0,       // Generated, waiting for user acceptance
-    Accepted = 1,      // Both users accepted
-    InProgress = 2,    // Users at venue, phones locked
-    Completed = 3,     // Session finished, reward granted
+    Pending = 0,      // Generated, waiting for user acceptance
+    Accepted = 1,     // Both users accepted
+    InProgress = 2,   // Users at venue, phones locked
+    Completed = 3,    // Session finished, reward granted
     Expired = 4,
     Cancelled = 5
 }

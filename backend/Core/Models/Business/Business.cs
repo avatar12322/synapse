@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using NetTopologySuite.Geometries;
 
 namespace Synapse.Core.Models.Business;
 
@@ -15,8 +16,8 @@ public class Business
     [MaxLength(50)]
     public string? City { get; set; }
 
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
+    // PostGIS geography point (SRID 4326 — WGS84). X=longitude, Y=latitude.
+    public Point Location { get; set; } = null!;
 
     [MaxLength(50)]
     public string Category { get; set; } = string.Empty;
@@ -30,6 +31,15 @@ public class Business
     // Owner user account (Role = Business)
     public int OwnerId { get; set; }
     public User.User Owner { get; set; } = null!;
+
+    // Stripe Connect account for commission payouts
+    [MaxLength(100)]
+    public string? StripeAccountId { get; set; }
+
+    public bool StripeOnboardingComplete { get; set; } = false;
+
+    // Default discount offered to mission participants
+    public int DefaultDiscountPercent { get; set; } = 15;
 
     public ICollection<Mission.Mission> Missions { get; set; } = new List<Mission.Mission>();
 }

@@ -27,6 +27,9 @@ public class User
     [MaxLength(10)]
     public string Language { get; set; } = "en";
 
+    [MaxLength(100)]
+    public string? StripeCustomerId { get; set; }
+
     public ICollection<Social.Friendship> InitiatedFriendships { get; set; } = new List<Social.Friendship>();
     public ICollection<Social.Friendship> ReceivedFriendships { get; set; } = new List<Social.Friendship>();
 }

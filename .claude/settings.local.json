@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir c:\\\\dev\\\\synapse)",
+      "PowerShell(Get-ChildItem c:\\\\dev\\\\synapse\\\\backend\\\\Core, c:\\\\dev\\\\synapse\\\\backend\\\\Api, c:\\\\dev\\\\synapse\\\\backend\\\\Infrastructure -Force -Recurse | Where-Object { -not $_.PSIsContainer } | Select-Object FullName)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('version:', d.get\\('version'\\)\\); print\\('description:', d.get\\('description',''\\)[:200]\\)\")",
+      "PowerShell($pkg = Get-Content \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\\\\package.json\" | ConvertFrom-Json; Write-Output \"version: $\\($pkg.version\\)\"; Write-Output \"description: $\\($pkg.description\\)\")",
+      "PowerShell(Get-ChildItem \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\" -Force | Where-Object { -not $_.PSIsContainer } | Select-Object Name | Head -20; Write-Output \"---DIRS---\"; Get-ChildItem \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\" -Force | Where-Object { $_.PSIsContainer } | Select-Object Name)",
+      "PowerShell(Get-ChildItem \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\" -Force | Where-Object { -not $_.PSIsContainer } | Select-Object -First 20 -ExpandProperty Name)",
+      "PowerShell(Get-ChildItem \"c:\\\\dev\\\\synapse\\\\frontend\\\\node_modules\\\\next\" -Force | Where-Object { $_.PSIsContainer } | Select-Object Name)"
+    ]
+  }
+}

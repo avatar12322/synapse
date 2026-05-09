@@ -9,7 +9,7 @@ import NotificationBell from '@/components/layout/NotificationBell';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { Toaster } from 'sonner';
 import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import '@/i18n/config';
 import { authStorage } from '@/lib/auth';
 import i18n from '@/i18n/config';
@@ -18,6 +18,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [isClient, setIsClient] = useState(false);
   const shouldReduceMotion = useReducedMotion();
   const pathname = usePathname();
+  const router = useRouter();
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/register');
 
   useEffect(() => {
@@ -25,6 +26,16 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     const user = authStorage.getUser();
     if (user?.language) i18n.changeLanguage(user.language);
   }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
+    const user = authStorage.getUser();
+    if (!user && !isAuthPage) {
+      router.replace('/login');
+    } else if (user && isAuthPage) {
+      router.replace('/');
+    }
+  }, [isClient, isAuthPage, router]);
 
   if (!isClient) {
     return (

@@ -43,13 +43,28 @@ export async function apiRequest<T>(endpoint: string, options?: RequestInit, isR
   return response.json();
 }
 
-// Notification API
+export interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  type: 0 | 1 | 2 | 3 | 4;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface UserProfile {
+  id: number;
+  email: string;
+  username: string;
+  role: string;
+  language: string;
+}
+
 export const notificationApi = {
-  getUnread: () => apiRequest<any[]>('/notifications'),
+  getUnread: () => apiRequest<Notification[]>('/notifications'),
   markAllRead: () => apiRequest<void>('/notifications/read-all', { method: 'POST' }),
 };
 
-// User API
 export const userApi = {
-  getProfile: () => apiRequest<any>('/users/profile'),
+  getProfile: () => apiRequest<UserProfile>('/users/profile'),
 };
