@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Synapse.Core.DTOs.Mission;
 using Synapse.Core.Models.Mission;
@@ -11,6 +14,7 @@ public interface IMissionService
     Task<IEnumerable<MissionSummaryDto>> GetMyMissionsAsync(int userId, CancellationToken ct = default);
     Task<MissionDto?> AcceptAsync(int missionId, int userId, CancellationToken ct = default);
     Task<MissionDto?> VerifyCompletionAsync(string code, int businessOwnerId, CancellationToken ct = default);
+    Task<(MissionDto? Mission, string? Error)> VerifyByNfcAsync(int missionId, string rawPayload, int userId, CancellationToken ct = default);
     Task<MissionDto?> CancelAsync(int missionId, int userId, CancellationToken ct = default);
     Task ExpireOldMissionsAsync(CancellationToken ct = default);
 }
@@ -94,6 +98,72 @@ public class MissionService(SynapseDbContext db) : IMissionService
 
         await db.SaveChangesAsync(ct);
         return ToDto(m, businessOwnerId);
+    }
+
+    public async Task<(MissionDto? Mission, string? Error)> VerifyByNfcAsync(
+        int missionId, string rawPayload, int userId, CancellationToken ct)
+    {
+        // Parse NDEF payload: { "v":1, "bid":"...", "mid":"...", "ts":epoch, "sig":"hex" }
+        JsonElement payload;
+        try
+        {
+            using var doc = JsonDocument.Parse(rawPayload);
+            payload = doc.RootElement.Clone();
+        }
+        catch
+        {
+            return (null, "Invalid JSON payload");
+        }
+
+        if (!payload.TryGetProperty("bid", out var bidEl) ||
+            !payload.TryGetProperty("mid", out var midEl) ||
+            !payload.TryGetProperty("ts", out var tsEl) ||
+            !payload.TryGetProperty("sig", out var sigEl))
+            return (null, "Payload missing required fields (bid, mid, ts, sig)");
+
+        var bid = bidEl.GetString() ?? string.Empty;
+        var mid = midEl.GetString() ?? string.Empty;
+        var sig = sigEl.GetString() ?? string.Empty;
+        var ts = tsEl.GetInt64();
+
+        // Replay protection: tag must be no older than 5 minutes
+        var tagTime = DateTimeOffset.FromUnixTimeSeconds(ts).UtcDateTime;
+        if (Math.Abs((DateTime.UtcNow - tagTime).TotalMinutes) > 5)
+            return (null, "Tag timestamp expired (replay protection)");
+
+        if (!int.TryParse(mid, out var tagMissionId) || tagMissionId != missionId)
+            return (null, "Payload missionId does not match requested mission");
+
+        var m = await db.Missions
+            .Include(x => x.Business)
+            .FirstOrDefaultAsync(x => x.Id == missionId, ct);
+
+        if (m is null) return (null, "Mission not found");
+        if (m.Status != MissionStatus.InProgress) return (null, "Mission is not in progress");
+        if (m.UserAId != userId && m.UserBId != userId) return (null, "Not a participant of this mission");
+        if (m.Business.Id.ToString() != bid) return (null, "Tag businessId does not match mission business");
+
+        // Verify HMAC-SHA256: key = NfcSecret (base64), message = "v=1|bid=<bid>|mid=<mid>|ts=<ts>"
+        if (string.IsNullOrEmpty(m.Business.NfcSecret))
+            return (null, "NFC not configured for this business");
+
+        var message = $"v=1|bid={bid}|mid={mid}|ts={ts}";
+        var keyBytes = Convert.FromBase64String(m.Business.NfcSecret);
+        var msgBytes = Encoding.UTF8.GetBytes(message);
+        var expectedSig = Convert.ToHexString(HMACSHA256.HashData(keyBytes, msgBytes)).ToLowerInvariant();
+
+        if (!CryptographicOperations.FixedTimeEquals(
+            Encoding.ASCII.GetBytes(expectedSig),
+            Encoding.ASCII.GetBytes(sig.ToLowerInvariant())))
+            return (null, "Invalid NFC tag signature");
+
+        m.Status = MissionStatus.Completed;
+        m.CompletedAt = DateTime.UtcNow;
+        m.VerificationCode = null;
+        m.VerificationCodeExpiresAt = null;
+
+        await db.SaveChangesAsync(ct);
+        return (ToDto(m, userId), null);
     }
 
     public async Task<MissionDto?> CancelAsync(int missionId, int userId, CancellationToken ct)

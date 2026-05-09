@@ -41,5 +41,14 @@ public class Business
     // Default discount offered to mission participants
     public int DefaultDiscountPercent { get; set; } = 15;
 
+    // Phase 2: HMAC-SHA256 key for POS webhook signature verification
+    [MaxLength(100)]
+    public string? PosWebhookSecret { get; set; }
+
+    // Phase 2: HMAC-SHA256 key for NFC NDEF tag signature verification
+    [MaxLength(100)]
+    public string? NfcSecret { get; set; }
+
     public ICollection<Mission.Mission> Missions { get; set; } = new List<Mission.Mission>();
+    public ICollection<Invoice.KsefInvoice> KsefInvoices { get; set; } = new List<Invoice.KsefInvoice>();
 }

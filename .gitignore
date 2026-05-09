@@ -13,6 +13,19 @@ frontend/.env.local
 frontend/android/
 frontend/ios/
 
+# KSeF service
+ksef/bin/
+ksef/obj/
+ksef/pdfs/
+
+# Certificates — never commit real certs
+certs/*.pfx
+certs/*.p12
+certs/*.cer
+certs/*.pem
+
 # Misc
 .DS_Store
 *.log
+*.env
+.env.*

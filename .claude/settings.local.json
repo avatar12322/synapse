@@ -17,7 +17,26 @@
       "Bash(npm install *)",
       "Bash(node -e \"const p = require\\('./node_modules/next/package.json'\\); console.log\\(p.version\\)\")",
       "Bash(dotnet ef *)",
-      "Bash(dotnet build *)"
+      "Bash(dotnet build *)",
+      "Bash(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\backend\\\\Core\\\\Models\\\\Invoice\")",
+      "Bash(Out-Null)",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\backend\\\\Core\\\\Models\\\\Invoice\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\backend\\\\Core\\\\DTOs\\\\Webhook\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\backend\\\\Core\\\\Services\\\\Webhook\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\backend\\\\Core\\\\Services\\\\Invoice\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\backend\\\\Api\\\\Endpoints\\\\Webhook\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\backend\\\\Api\\\\Endpoints\\\\Invoice\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\backend\\\\Core\\\\DTOs\\\\Invoice\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\frontend\\\\native-plugins\\\\nfc-presence\\\\src\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\frontend\\\\native-plugins\\\\nfc-presence\\\\ios\\\\Plugin\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\frontend\\\\native-plugins\\\\nfc-presence\\\\android\\\\src\\\\main\\\\java\\\\com\\\\synapse\\\\nfcpresence\")",
+      "Bash(dotnet new *)",
+      "Bash(dotnet add *)",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\ksef\\\\Models\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\ksef\\\\Services\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\ksef\\\\Endpoints\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\certs\")",
+      "PowerShell(New-Item -ItemType File -Force \"c:\\\\dev\\\\synapse\\\\certs\\\\.gitkeep\")"
     ]
   }
 }

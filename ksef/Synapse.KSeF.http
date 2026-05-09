@@ -1,0 +1,6 @@
+@Synapse.KSeF_HostAddress = http://localhost:5272
+
+GET {{Synapse.KSeF_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

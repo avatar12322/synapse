@@ -58,5 +58,31 @@ services:
     profiles:
       - agents
 
+  ksef:
+    build:
+      context: ./ksef
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - PORT=8002
+      - KSEF_NIP=${KSEF_NIP}
+      - KSEF_API_BASE=${KSEF_API_BASE:-https://ksef-test.mf.gov.pl}
+      - KSEF_CERT_PATH=/certs/ksef.pfx
+      - KSEF_CERT_PASSWORD=${KSEF_CERT_PASSWORD}
+      - KSEF_BACKEND_URL=http://backend:5000
+      - KSEF_PDF_OUTPUT=/app/pdfs
+      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
+    volumes:
+      - ./certs:/certs:ro
+      - ksef_pdfs:/app/pdfs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - ksef
+
 volumes:
   postgres_data:
+  ksef_pdfs:

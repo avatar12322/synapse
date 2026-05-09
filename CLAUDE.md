@@ -14,26 +14,27 @@ adaptuje wizję do realnego stacku scaffoldu (różni się od raportu — patrz 
 
 ## 1. Co już jest (stan repozytorium)
 
-Repo to scaffold z projektu „Questify" przekształcony w `Synapse`. **Fazy 0 i 1 ukończone.**
+Repo to scaffold z projektu „Questify" przekształcony w `Synapse`. **Fazy 0, 1 i 2 ukończone.**
 
 | Warstwa          | Co jest                                                                                                                                              |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Backend          | [backend/](backend/) — **.NET 9** minimal API, EF Core 9, JWT (httpOnly cookie), Postgres + Redis (lub in-memory fallback). Clean Arch: Api/Core/Infrastructure |
-| Modele DB        | [User](backend/Core/Models/User/User.cs), [Business](backend/Core/Models/Business/Business.cs), [Mission](backend/Core/Models/Mission/Mission.cs), [UserProfile](backend/Core/Models/User/UserProfile.cs), Friendship, Notification |
-| Endpointy        | `/api/missions` (CRUD + accept/lock/cancel/verify), `/api/businesses` (nearby + CRUD), `/api/match`, `/ws/presence` (WebSocket), `/api/stripe/*`, `/api/notifications` |
-| Baza danych      | Migracja `Phase1_InitialSchema` — PostGIS `geography(Point,4326)`, pgvector `vector(768)`, extensions: postgis / vector / h3. GIST spatial index. |
-| Frontend         | [frontend/](frontend/) — **Next.js 15** (Turbopack) + React 19 + TanStack Query + Tailwind v4 + Radix + framer-motion + i18next (PL/EN). Pełne UI misji: lista, detail (state machine), match flow, panel biznesu. |
+| Modele DB        | [User](backend/Core/Models/User/User.cs), [Business](backend/Core/Models/Business/Business.cs), [Mission](backend/Core/Models/Mission/Mission.cs), [UserProfile](backend/Core/Models/User/UserProfile.cs), [KsefInvoice](backend/Core/Models/Invoice/KsefInvoice.cs), Friendship, Notification |
+| Endpointy        | `/api/missions` (CRUD + accept/lock/cancel/verify/**verify-nfc**), `/api/businesses` (nearby + CRUD + webhook-secret + nfc-secret), `/api/match`, `/ws/presence`, `/api/stripe/*`, `/api/webhooks/pos`, `/api/invoices/*`, `/api/notifications` |
+| Baza danych      | Migracje: `Phase1_InitialSchema` + `Phase2_PosNfcSecretsAndKsefInvoices` — PostGIS, pgvector, KsefInvoices, PosWebhookSecret, NfcSecret, VerifiedByPos |
+| Frontend         | [frontend/](frontend/) — **Next.js 15** (Turbopack) + React 19 + TanStack Query + Tailwind v4 + Radix + framer-motion + i18next (PL/EN). |
 | Python agents    | [agents/](agents/) — **FastAPI + LangGraph**, 4 agenty (Profiler / Scout / Matchmaker / Orchestrator), Gemini 2.5 Flash, sentence-transformers (768-dim embeddings) |
-| Capacitor plugins | [frontend/native-plugins/](frontend/native-plugins/) — scaffoldy: `screen-lock-guard`, `presence-verifier`, `anti-spoof` (Swift + Kotlin + TS bridge) |
+| Capacitor plugins | [frontend/native-plugins/](frontend/native-plugins/) — `screen-lock-guard`, `presence-verifier`, `anti-spoof`, **`nfc-presence`** (Swift + Kotlin + TS bridge) |
+| KSeF service     | [ksef/](ksef/) — **osobny ASP.NET Core 9** na porcie 8002 (docker profile: `ksef`). Auth challenge-response, XML FA(3), AES+RSA szyfrowanie, UPO polling, PDF/A-3 z QR |
 | Mobile wrap      | [capacitor.config.ts](frontend/capacitor.config.ts) — **Capacitor 8** (iOS + Android), appId `com.synapse.app`                                       |
-| Infra dev        | [docker-compose.yml](docker-compose.yml) — custom Postgres 16 image (PostGIS + pgvector) + Redis 7 + Adminer + agents service (profil: agents)        |
+| Infra dev        | [docker-compose.yml](docker-compose.yml) — Postgres 16 + Redis 7 + Adminer + agents (profil: agents) + **ksef** (profil: ksef)                       |
 
 **Co NIE jest zrobione (pozostałe z Fazy 1):**
 - iOS Live Activity z timerem (ActivityKit + Dynamic Island) — plugin `mission-hud`
 - Android persistent foreground notification z licznikiem
 
-**Co NIE jest zrobione (Fazy 2–4):**
-warstwa integracji POS, KSeF 2.0, plugin NFC, Apple Watch/Wear OS companion, geosharding, Kafka, CI/CD.
+**Co NIE jest zrobione (Fazy 3–4):**
+geosharding Redis, Kafka, Pinecone, Kubernetes, Anti-Sybil ML, Apple Watch companion, CI/CD, multi-jurisdiction VAT.
 
 ---
 
@@ -133,19 +134,21 @@ Auth + JWT, Postgres + Redis, podstawowe modele, Capacitor wired up, Next.js dev
 - [ ] iOS Live Activity z timerem (ActivityKit + Dynamic Island) — plugin `mission-hud` — **pozostało**
 - [ ] Android persistent foreground notification z licznikiem — **pozostało**
 
-**Definition of done:** dwoje testerów dostaje misję, dochodzą do kawiarni, blokują telefony na 30 min, dostają zniżkę 15 % via kod, lokal akceptuje, Stripe wypłaca prowizję.
+**Definition of done:** dwoje testerów dostaje misję, dochodzą do kawiarni, dostają zniżkę 15 % via kod, lokal akceptuje, Stripe wypłaca prowizję.
 
-### Faza 2 — Integracje partnerskie
-- [ ] Webhooks z GoPOS / inne POS — automatyczna weryfikacja sprzedaży
-- [ ] Card-Linked Offers przez Mastercard Offers API (alternatywa)
-- [ ] **KSeF 2.0 integrator** (osobny .NET service):
-    - OAuth challenge flow → JWT session
-    - Generator XML FA(3) z agregowanych prowizji (P_17=1, klauzula „samofakturowanie")
-    - RSA-4096 OAEP-SHA256 + AES symetryczne dla payloadu
-    - Polling UPO + archiwizacja PDF/A-3 z QR (`ksef-pdf-generator` lub własny renderer)
-    - Rate-limit backoff (per IP + per token)
-- [ ] Plugin `nfc-presence` + tagi NDEF do partnerów
-- [ ] Apple Watch / Wear OS companion
+### Faza 2 — Integracje partnerskie (✅ ukończona)
+- [x] **Stripe Webhooks** — `POST /api/stripe/webhook`, obsługa `account.updated` / `account.application.deauthorized` / `transfer.paid`, env: `STRIPE_WEBHOOK_SECRET`
+- [x] **POS Webhooks** — `POST /api/webhooks/pos` (HMAC-SHA256, format Synapse), generowanie sekretów per-biznes (`/api/businesses/webhook-secret`, `/nfc-secret`), pola `Business.PosWebhookSecret` + `Business.NfcSecret`, `Mission.VerifiedByPos` + `Mission.PosTransactionId`
+- [x] **KSeF 2.0 integrator** (`ksef/` — osobny ASP.NET Core 9 service, port 8002, docker profile: `ksef`):
+    - `KsefAuthService` — OAuth challenge-response, cert lub token (test env)
+    - `InvoiceGeneratorService` — XML FA(3) z `P_17=1` (samofakturowanie)
+    - `EncryptionService` — AES-256-CBC + RSA-4096 OAEP-SHA256
+    - `UpoPollerService` — IHostedService, exponential backoff 5s→10s→30s→60s (max 20 prób)
+    - `PdfArchiveService` — PDF z QR kodem (QuestPDF + QRCoder)
+    - Tabela `KsefInvoices` w głównej DB, migracja `Phase2_PosNfcSecretsAndKsefInvoices`
+- [x] **Plugin `nfc-presence`** (`frontend/native-plugins/nfc-presence/`) — iOS `NFCNDEFReaderSession` + Android `NfcAdapter.enableReaderMode`, NDEF payload `{ v, bid, mid, ts, sig }` z HMAC-SHA256 per-biznes, backend endpoint `POST /api/missions/{id}/verify-nfc` z replay protection (5-min okno)
+- [ ] Card-Linked Offers przez Mastercard Offers API (alternatywa, odłożone)
+- [ ] Apple Watch / Wear OS companion (Faza 3)
 
 ### Faza 3 — Skalowanie
 - [ ] Geosharding Redis (klucz: H3 res 6, czyli ~36 km²) — zastąpić single-node
@@ -172,7 +175,7 @@ Auth + JWT, Postgres + Redis, podstawowe modele, Capacitor wired up, Next.js dev
 - Migracje: `dotnet ef migrations add <Name> --project backend` (auto-aplikowane przy starcie — patrz `Program.cs:113`).
 - Async wszędzie. `CancellationToken` w każdym handlerze.
 
-### Frontend (Next.js 15 — niestandardowy)
+### Frontend (Next.js 16 — niestandardowy)
 - ⚠️ **Najpierw przeczytaj `frontend/AGENTS.md`** — to NIE jest stock Next.js, dokumentacja jest w `frontend/node_modules/next/dist/docs/`. Trening LLM-a jest nieaktualny dla tej dystrybucji.
 - App Router (`src/app/`). Server components domyślnie, client tylko gdy potrzebne.
 - Stan serwera: TanStack Query (queryClient w `src/lib/queryClient.ts`).
@@ -211,7 +214,11 @@ docker compose up -d                           # postgres + redis + adminer (808
 cd backend ; dotnet run                        # .NET API na :5000
 cd frontend ; npm run dev                      # Next.js dev na :3000
 
-# Migracje EF
+# KSeF service (opcjonalnie)
+docker compose --profile ksef up -d            # ksef na :8002
+cd ksef ; dotnet run                           # lub lokalnie bez Dockera
+
+# Migracje EF (backend)
 cd backend ; dotnet ef migrations add <Name>
 cd backend ; dotnet ef database update
 
@@ -220,10 +227,24 @@ cd frontend ; npm run build
 cd frontend ; npx cap sync
 cd frontend ; npx cap open ios                 # Xcode (wymaga macOS)
 cd frontend ; npx cap open android             # Android Studio
+
+# Testowanie Stripe Webhooks lokalnie
+stripe listen --forward-to localhost:5000/api/stripe/webhook
+stripe trigger transfer.paid
+
+# Testowanie POS Webhooka (PowerShell)
+$secret = "<base64 z POST /api/businesses/webhook-secret>"
+$body = '{"event":"sale.completed","businessId":"1","verificationCode":"123456","amount":4500,"currency":"PLN","transactionId":"tx-1","timestamp":"2026-05-09T12:00:00Z"}'
+$hmac = [System.Security.Cryptography.HMACSHA256]::new([Convert]::FromBase64String($secret))
+$sig = [Convert]::ToHexString($hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes($body))).ToLower()
+Invoke-RestMethod -Uri http://localhost:5000/api/webhooks/pos -Method POST -Body $body `
+  -Headers @{"X-Synapse-Signature"="sha256=$sig";"Content-Type"="application/json"}
 ```
 
 Dev-server IP do iOS/Android symulatora:
 ustaw `DEV_SERVER_IP` w `frontend/.env.local` (musi być IP w LAN, nie `localhost`).
+
+Zmienne środowiskowe Fazy 2 — patrz [`.env.example`](.env.example).
 
 ---
 

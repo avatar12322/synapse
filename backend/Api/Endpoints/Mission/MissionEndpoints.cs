@@ -70,5 +70,22 @@ public static class MissionEndpoints
                 ? Results.BadRequest(new { error = "Invalid or expired code, or minimum lock time not reached." })
                 : Results.Ok(m);
         });
+
+        // POST /api/missions/{id}/verify-nfc — participant submits NFC scan result for server-side HMAC verification
+        group.MapPost("/{id:int}/verify-nfc", async (
+            int id,
+            NfcVerifyRequest req,
+            ClaimsPrincipal user,
+            IMissionService svc,
+            CancellationToken ct) =>
+        {
+            var userId = int.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var (mission, error) = await svc.VerifyByNfcAsync(id, req.RawPayload, userId, ct);
+            return mission is null
+                ? Results.BadRequest(new { error })
+                : Results.Ok(mission);
+        });
     }
 }
+
+public record NfcVerifyRequest(string RawPayload);

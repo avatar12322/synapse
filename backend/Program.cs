@@ -14,12 +14,16 @@ using Synapse.Api.Endpoints.Mission;
 using Synapse.Api.Endpoints.Notification;
 using Synapse.Api.Endpoints.Presence;
 using Synapse.Api.Endpoints.Stripe;
+using Synapse.Api.Endpoints.Webhook;
+using Synapse.Api.Endpoints.Invoice;
 using Synapse.Core.Services.Auth;
 using Synapse.Core.Services.Business;
 using Synapse.Core.Services.Match;
 using Synapse.Core.Services.Mission;
 using Synapse.Core.Services.Notification;
 using Synapse.Core.Services.Stripe;
+using Synapse.Core.Services.Webhook;
+using Synapse.Core.Services.Invoice;
 using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -117,6 +121,8 @@ builder.Services.AddScoped<IBusinessService, BusinessService>();
 builder.Services.AddScoped<IMissionService, MissionService>();
 builder.Services.AddScoped<IMatchService, MatchService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
+builder.Services.AddScoped<IPosWebhookService, PosWebhookService>();
+builder.Services.AddScoped<IInvoiceAggregatorService, InvoiceAggregatorService>();
 
 // Background services
 builder.Services.AddHostedService<NotificationCleanupService>();
@@ -155,6 +161,8 @@ app.MapBusinessEndpoints();
 app.MapMissionEndpoints();
 app.MapMatchEndpoints();
 app.MapStripeEndpoints();
+app.MapWebhookEndpoints();
+app.MapInvoiceEndpoints();
 app.MapPresenceEndpoints();
 
 // Auto-migrate on startup
@@ -169,6 +177,23 @@ using (var scope = app.Services.CreateScope())
         {
             await db.Database.MigrateAsync();
             logger.LogInformation("Database migrated");
+
+            // Seed Admin User
+            if (!await db.Users.AnyAsync(u => u.Email == "admin@synapse.local"))
+            {
+                var admin = new Synapse.Core.Models.User.User
+                {
+                    Email = "admin@synapse.local",
+                    Username = "admin",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+                    Role = Synapse.Core.Models.User.UserRole.Admin,
+                    LastLoginAt = DateTime.UtcNow
+                };
+                db.Users.Add(admin);
+                await db.SaveChangesAsync();
+                logger.LogInformation("Admin user seeded: admin@synapse.local / admin123");
+            }
+
             break;
         }
         catch (Exception ex)
@@ -181,7 +206,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-Console.WriteLine("=== SYNAPSE BACKEND READY (Phase 1) ===");
+Console.WriteLine("=== SYNAPSE BACKEND READY (Phase 2) ===");
 app.Run();
 
 public class NotificationCleanupService : BackgroundService

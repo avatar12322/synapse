@@ -53,6 +53,11 @@ public class Mission
     public int CommissionAmountCents { get; set; } = 0;
     public bool CommissionPaid { get; set; } = false;
 
+    // Phase 2: POS webhook verification
+    public bool VerifiedByPos { get; set; } = false;
+    [MaxLength(200)]
+    public string? PosTransactionId { get; set; }
+
     // AI generation metadata
     public string? AiPromptUsed { get; set; }
     public string? InterestTags { get; set; }  // JSON array of shared interests

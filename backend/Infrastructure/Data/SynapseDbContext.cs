@@ -5,6 +5,7 @@ using Synapse.Core.Models.Social;
 using Synapse.Core.Models.Notification;
 using Synapse.Core.Models.Business;
 using Synapse.Core.Models.Mission;
+using Synapse.Core.Models.Invoice;
 
 namespace Synapse.Infrastructure.Data;
 
@@ -18,6 +19,7 @@ public class SynapseDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Business> Businesses { get; set; }
     public DbSet<Mission> Missions { get; set; }
+    public DbSet<KsefInvoice> KsefInvoices { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -95,6 +97,18 @@ public class SynapseDbContext : DbContext
             e.HasOne(b => b.Owner)
              .WithMany()
              .HasForeignKey(b => b.OwnerId)
+             .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<KsefInvoice>(e =>
+        {
+            e.HasKey(i => i.Id);
+            e.HasIndex(i => new { i.BusinessId, i.Status });
+            e.HasIndex(i => i.KsefReferenceNumber);
+
+            e.HasOne(i => i.Business)
+             .WithMany(b => b.KsefInvoices)
+             .HasForeignKey(i => i.BusinessId)
              .OnDelete(DeleteBehavior.Restrict);
         });
 

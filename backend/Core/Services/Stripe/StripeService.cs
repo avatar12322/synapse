@@ -9,6 +9,7 @@ public interface IStripeService
     Task<string> CreateConnectOnboardingLinkAsync(int businessId, string returnUrl, string refreshUrl, CancellationToken ct = default);
     Task<bool> CompleteOnboardingAsync(int businessId, string accountId, CancellationToken ct = default);
     Task<bool> ChargeCommissionAsync(int missionId, CancellationToken ct = default);
+    Task<bool> HandleWebhookAsync(string json, string stripeSignature, string webhookSecret, CancellationToken ct = default);
 }
 
 public class StripeService(SynapseDbContext db) : IStripeService
@@ -94,6 +95,66 @@ public class StripeService(SynapseDbContext db) : IStripeService
 
         mission.CommissionPaid = true;
         await db.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> HandleWebhookAsync(string json, string stripeSignature, string webhookSecret, CancellationToken ct)
+    {
+        Event stripeEvent;
+        try
+        {
+            stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, webhookSecret);
+        }
+        catch (StripeException)
+        {
+            return false;
+        }
+
+        switch (stripeEvent.Type)
+        {
+            case EventTypes.AccountUpdated:
+            {
+                if (stripeEvent.Data.Object is not Account account) break;
+                var business = await db.Businesses
+                    .FirstOrDefaultAsync(b => b.StripeAccountId == account.Id, ct);
+                if (business is null) break;
+                business.StripeOnboardingComplete = account.ChargesEnabled;
+                await db.SaveChangesAsync(ct);
+                break;
+            }
+
+            case EventTypes.AccountApplicationDeauthorized:
+            {
+                if (stripeEvent.Data.Object is not Application app) break;
+                // account id is on the event's account field for deauth events
+                var accountId = stripeEvent.Account;
+                if (string.IsNullOrEmpty(accountId)) break;
+                var business = await db.Businesses
+                    .FirstOrDefaultAsync(b => b.StripeAccountId == accountId, ct);
+                if (business is null) break;
+                business.StripeOnboardingComplete = false;
+                await db.SaveChangesAsync(ct);
+                break;
+            }
+
+            case "transfer.paid":
+            {
+                if (stripeEvent.Data.Object is not Transfer transfer) break;
+                // Match transfer description to mission id: "Synapse mission #<id> commission refund"
+                var desc = transfer.Description ?? string.Empty;
+                var prefix = "Synapse mission #";
+                var suffix = " commission refund";
+                if (!desc.StartsWith(prefix) || !desc.EndsWith(suffix)) break;
+                var idStr = desc[prefix.Length..^suffix.Length];
+                if (!int.TryParse(idStr, out var missionId)) break;
+                var mission = await db.Missions.FindAsync([missionId], ct);
+                if (mission is null) break;
+                mission.CommissionPaid = true;
+                await db.SaveChangesAsync(ct);
+                break;
+            }
+        }
+
         return true;
     }
 }
