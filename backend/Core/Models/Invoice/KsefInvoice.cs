@@ -9,6 +9,12 @@ public class KsefInvoice
     public int BusinessId { get; set; }
     public Business.Business Business { get; set; } = null!;
 
+    // Phase 4: discriminator — KSeF for PL businesses, EuPdf for other EU
+    public InvoiceType InvoiceType { get; set; } = InvoiceType.KSeF;
+
+    // Phase 4: VAT rate snapshot at invoice creation time (from tenant config or JurisdictionService)
+    public decimal VatRatePct { get; set; } = 0.23m;
+
     public DateOnly PeriodStart { get; set; }
     public DateOnly PeriodEnd { get; set; }
 
@@ -39,4 +45,10 @@ public enum KsefInvoiceStatus
     Sent = 1,
     UpoReceived = 2,
     Failed = 3
+}
+
+public enum InvoiceType
+{
+    KSeF = 0,
+    EuPdf = 1
 }

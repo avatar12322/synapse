@@ -4,17 +4,17 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using Synapse.Core.DTOs.Match;
+using Synapse.Core.Services.Presence;
 
 namespace Synapse.Api.Endpoints.Presence;
 
-/// <summary>
-/// In-process WebSocket hub for mission presence updates.
-/// Phase 3 will replace with Redis Streams / SignalR backplane.
-/// </summary>
 public static class PresenceEndpoints
 {
-    // missionId → set of connected sockets
+    // missionId → set of locally connected sockets on this pod
     private static readonly ConcurrentDictionary<int, ConcurrentBag<WebSocket>> MissionSockets = new();
+
+    // Missions that have at least one local socket — read by PresenceStreamConsumer
+    internal static readonly ConcurrentDictionary<int, bool> ActiveMissionStreams = new();
 
     public static void MapPresenceEndpoints(this WebApplication app)
     {
@@ -29,7 +29,6 @@ public static class PresenceEndpoints
             return;
         }
 
-        // Auth: read JWT from cookie (same as REST endpoints)
         var user = ctx.User;
         if (!user.Identity?.IsAuthenticated ?? true)
         {
@@ -38,6 +37,8 @@ public static class PresenceEndpoints
         }
 
         var userId = int.Parse(user.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        // Resolve optional Redis publisher — if absent, fall back to in-process broadcast
+        var publisher = ctx.RequestServices.GetService<IPresencePublisher>();
         var ws = await ctx.WebSockets.AcceptWebSocketAsync();
         int? joinedMission = null;
 
@@ -61,19 +62,21 @@ public static class PresenceEndpoints
 
                 if (update is null) continue;
 
-                // Join mission room on first message
+                // Join mission room on first message or when switching missions
                 if (joinedMission != update.MissionId)
                 {
                     if (joinedMission.HasValue)
                         LeaveRoom(joinedMission.Value, ws);
 
                     joinedMission = update.MissionId;
-                    MissionSockets.GetOrAdd(update.MissionId, _ => new ConcurrentBag<WebSocket>())
-                                  .Add(ws);
+                    MissionSockets.GetOrAdd(update.MissionId, _ => new ConcurrentBag<WebSocket>()).Add(ws);
+                    ActiveMissionStreams.TryAdd(update.MissionId, true);
                 }
 
-                // Broadcast to other participants in the same mission
-                await BroadcastAsync(update.MissionId, json, ws, ctx.RequestAborted);
+                if (publisher is not null)
+                    await publisher.PublishAsync(update.MissionId, json, ctx.RequestAborted);
+                else
+                    await BroadcastLocalAsync(update.MissionId, json, ctx.RequestAborted);
             }
         }
         finally
@@ -86,18 +89,16 @@ public static class PresenceEndpoints
         }
     }
 
-    private static async Task BroadcastAsync(int missionId, string json, WebSocket sender, CancellationToken ct)
+    // Called by PresenceStreamConsumer to fan-out messages from Redis to local sockets.
+    internal static async Task BroadcastLocalAsync(int missionId, string json, CancellationToken ct)
     {
         if (!MissionSockets.TryGetValue(missionId, out var sockets)) return;
 
         var data = Encoding.UTF8.GetBytes(json);
         foreach (var socket in sockets)
         {
-            if (socket == sender || socket.State != WebSocketState.Open) continue;
-            try
-            {
-                await socket.SendAsync(new ArraySegment<byte>(data), WebSocketMessageType.Text, true, ct);
-            }
+            if (socket.State != WebSocketState.Open) continue;
+            try { await socket.SendAsync(new ArraySegment<byte>(data), WebSocketMessageType.Text, true, ct); }
             catch { /* disconnected peer */ }
         }
     }
@@ -105,14 +106,13 @@ public static class PresenceEndpoints
     private static void LeaveRoom(int missionId, WebSocket ws)
     {
         if (!MissionSockets.TryGetValue(missionId, out var bag)) return;
-        // ConcurrentBag doesn't support remove — rebuild without the disconnected socket
         var remaining = bag.Where(s => s != ws && s.State == WebSocketState.Open).ToList();
         if (remaining.Count == 0)
-            MissionSockets.TryRemove(missionId, out _);
-        else
         {
-            var newBag = new ConcurrentBag<WebSocket>(remaining);
-            MissionSockets[missionId] = newBag;
+            MissionSockets.TryRemove(missionId, out _);
+            ActiveMissionStreams.TryRemove(missionId, out _);
         }
+        else
+            MissionSockets[missionId] = new ConcurrentBag<WebSocket>(remaining);
     }
 }

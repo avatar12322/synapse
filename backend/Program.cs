@@ -5,6 +5,7 @@ using NetTopologySuite;
 using NetTopologySuite.Geometries;
 using Npgsql;
 using Pgvector.EntityFrameworkCore;
+using QuestPDF.Infrastructure;
 using System.Text;
 using Synapse.Infrastructure.Data;
 using Synapse.Api.Endpoints.Auth;
@@ -16,6 +17,9 @@ using Synapse.Api.Endpoints.Presence;
 using Synapse.Api.Endpoints.Stripe;
 using Synapse.Api.Endpoints.Webhook;
 using Synapse.Api.Endpoints.Invoice;
+using Synapse.Api.Endpoints.Tenant;
+using Synapse.Api.Endpoints.Profile;
+using Synapse.Api.Endpoints.Reputation;
 using Synapse.Core.Services.Auth;
 using Synapse.Core.Services.Business;
 using Synapse.Core.Services.Match;
@@ -24,7 +28,18 @@ using Synapse.Core.Services.Notification;
 using Synapse.Core.Services.Stripe;
 using Synapse.Core.Services.Webhook;
 using Synapse.Core.Services.Invoice;
+using Synapse.Core.Services.Presence;
+using Synapse.Core.Services.Tenant;
+using Synapse.Core.Services.Security;
+using Synapse.Core.Services.Reputation;
+using Synapse.Api.Middleware;
 using Stripe;
+using StackExchange.Redis;
+using H3;
+using H3.Algorithms;
+using H3.Extensions;
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +49,14 @@ builder.Services.AddMemoryCache();
 // Redis or in-memory fallback
 var redisConnection = Environment.GetEnvironmentVariable("REDIS_CONNECTION_STRING");
 if (!string.IsNullOrEmpty(redisConnection))
+{
     builder.Services.AddStackExchangeRedisCache(o => o.Configuration = redisConnection);
+    // IConnectionMultiplexer for Redis Streams (presence backplane)
+    builder.Services.AddSingleton<IConnectionMultiplexer>(
+        ConnectionMultiplexer.Connect(redisConnection));
+    builder.Services.AddSingleton<IPresencePublisher, RedisPresencePublisher>();
+    builder.Services.AddHostedService<PresenceStreamConsumer>();
+}
 else
     builder.Services.AddDistributedMemoryCache();
 
@@ -123,10 +145,21 @@ builder.Services.AddScoped<IMatchService, MatchService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
 builder.Services.AddScoped<IPosWebhookService, PosWebhookService>();
 builder.Services.AddScoped<IInvoiceAggregatorService, InvoiceAggregatorService>();
+// Phase 4: multi-tenant + white-label
+builder.Services.AddScoped<ITenantContext, TenantContext>();
+builder.Services.AddScoped<ITenantService, TenantService>();
+// Phase 4: multi-jurisdiction VAT + EU PDF invoice
+builder.Services.AddScoped<IJurisdictionService, JurisdictionService>();
+builder.Services.AddScoped<IEuInvoicePdfService, EuInvoicePdfService>();
+// Phase 4: encrypted embeddings (TEE-ready)
+builder.Services.AddSingleton<IEmbeddingEncryptionService, EmbeddingEncryptionService>();
+// Phase 5: reputation/points system
+builder.Services.AddScoped<IReputationService, ReputationService>();
 
 // Background services
 builder.Services.AddHostedService<NotificationCleanupService>();
 builder.Services.AddHostedService<MissionExpiryService>();
+builder.Services.AddHostedService<H3PseudonymizationService>();
 
 // Stripe global API key
 StripeConfiguration.ApiKey = Environment.GetEnvironmentVariable("STRIPE_SECRET_KEY")
@@ -149,6 +182,7 @@ app.UseWebSockets(new WebSocketOptions
 
 app.UseResponseCompression();
 app.UseCors();
+app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -164,6 +198,9 @@ app.MapStripeEndpoints();
 app.MapWebhookEndpoints();
 app.MapInvoiceEndpoints();
 app.MapPresenceEndpoints();
+app.MapTenantEndpoints();
+app.MapProfileEmbeddingEndpoints();
+app.MapReputationEndpoints();
 
 // Auto-migrate on startup
 using (var scope = app.Services.CreateScope())
@@ -206,7 +243,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-Console.WriteLine("=== SYNAPSE BACKEND READY (Phase 2) ===");
+Console.WriteLine("=== SYNAPSE BACKEND READY (Phase 5) ===");
 app.Run();
 
 public class NotificationCleanupService : BackgroundService
@@ -261,6 +298,48 @@ public class MissionExpiryService : BackgroundService
             }
             catch (Exception ex) { _logger.LogError(ex, "Mission expiry error"); }
             await Task.Delay(TimeSpan.FromMinutes(5), ct);
+        }
+    }
+}
+
+// GDPR art. 5 minimisation: degrade LastKnownH3 from res 9 → res 7 after 30 days.
+public class H3PseudonymizationService : BackgroundService
+{
+    private readonly IServiceProvider _sp;
+    private readonly ILogger<H3PseudonymizationService> _logger;
+
+    public H3PseudonymizationService(IServiceProvider sp, ILogger<H3PseudonymizationService> logger)
+    {
+        _sp = sp; _logger = logger;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                using var scope = _sp.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<SynapseDbContext>();
+                var cutoff = DateTime.UtcNow.AddDays(-30);
+
+                var profiles = await db.UserProfiles
+                    .Where(p => p.LastKnownH3 != null && p.LastKnownH3CapturedAt < cutoff)
+                    .Take(500)
+                    .ToListAsync(ct);
+
+                foreach (var profile in profiles)
+                {
+                    var cell = new H3Index(Convert.ToUInt64(profile.LastKnownH3!, 16));
+                    if (cell.Resolution > 7)
+                        profile.LastKnownH3 = cell.GetParentForResolution(7).ToString();
+                }
+
+                var count = await db.SaveChangesAsync(ct);
+                if (count > 0) _logger.LogInformation("Pseudonymized {Count} H3 locations", count);
+            }
+            catch (Exception ex) { _logger.LogError(ex, "H3 pseudonymization error"); }
+            await Task.Delay(TimeSpan.FromHours(6), ct);
         }
     }
 }

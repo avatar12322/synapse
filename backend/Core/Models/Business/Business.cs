@@ -49,6 +49,14 @@ public class Business
     [MaxLength(100)]
     public string? NfcSecret { get; set; }
 
+    // Phase 3: H3 res-6 cell (~36 km²) — stable shard key derived from Location
+    [MaxLength(20)]
+    public string? H3Index { get; set; }
+
+    // Phase 4: null = global Synapse platform, non-null = white-label tenant
+    public int? TenantId { get; set; }
+    public Tenant.Tenant? Tenant { get; set; }
+
     public ICollection<Mission.Mission> Missions { get; set; } = new List<Mission.Mission>();
     public ICollection<Invoice.KsefInvoice> KsefInvoices { get; set; } = new List<Invoice.KsefInvoice>();
 }

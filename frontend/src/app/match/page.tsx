@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Zap, MapPin, Loader2, CheckCircle2, AlertCircle, Radio } from 'lucide-react';
-import { matchApi, missionApi } from '@/lib/api';
+import { matchApi, missionApi, businessApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
@@ -21,6 +21,8 @@ export default function MatchPage() {
   const [category, setCategory] = useState<string>('any');
   const [errorMsg, setErrorMsg] = useState('');
   const [missionId, setMissionId] = useState<number | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [useMockLocation, setUseMockLocation] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Poll missions list while in queue — backend creates the mission for us when partner joins
@@ -57,14 +59,20 @@ export default function MatchPage() {
     let lng: number;
 
     try {
-      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 10000,
-          maximumAge: 60000,
-        })
-      );
-      lat = pos.coords.latitude;
-      lng = pos.coords.longitude;
+      if (useMockLocation) {
+        // Kraków city center coordinates
+        lat = 50.0619;
+        lng = 19.9395;
+      } else {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 10000,
+            maximumAge: 60000,
+          })
+        );
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+      }
     } catch {
       setErrorMsg(t('match.locationError'));
       setStep('error');
@@ -92,6 +100,19 @@ export default function MatchPage() {
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : t('common.error'));
       setStep('error');
+    }
+  };
+
+  const seedData = async () => {
+    setIsSeeding(true);
+    try {
+      await businessApi.seed();
+      setStep('form');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Seeding failed');
+      setStep('error');
+    } finally {
+      setIsSeeding(false);
     }
   };
 
@@ -152,6 +173,20 @@ export default function MatchPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Dev: Mock location */}
+              <div className="flex items-center gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-800">
+                <input 
+                  type="checkbox" 
+                  id="mock-loc"
+                  checked={useMockLocation}
+                  onChange={e => setUseMockLocation(e.target.checked)}
+                  className="h-4 w-4 rounded bg-slate-800 border-slate-700 text-purple-600 focus:ring-purple-500"
+                />
+                <label htmlFor="mock-loc" className="text-xs font-bold text-gray-400 cursor-pointer">
+                  Mock Location: Kraków, PL (for testing seeded venues)
+                </label>
+              </div>
 
               <Button
                 onClick={startMatch}
@@ -254,9 +289,17 @@ export default function MatchPage() {
                   <p className="text-gray-400 text-sm mb-6">{t('match.noVenuesSubtext')}</p>
                   <Button
                     onClick={() => setStep('form')}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold"
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold w-full mb-3"
                   >
                     {t('match.tryAgain')}
+                  </Button>
+                  <Button
+                    onClick={seedData}
+                    disabled={isSeeding}
+                    variant="outline"
+                    className="border-purple-500/30 text-purple-300 hover:bg-purple-900/20 w-full"
+                  >
+                    {isSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Seed Test Data (Kraków)"}
                   </Button>
                 </CardContent>
               </Card>

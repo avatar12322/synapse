@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslation } from 'react-i18next';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Home, Map, Users, User, ShieldCheck } from 'lucide-react';
+import { Home, Map, Users, User, ShieldCheck, Star, Store } from 'lucide-react';
 import { authStorage } from '@/lib/auth';
 import { useState, useEffect } from 'react';
 
@@ -12,12 +12,14 @@ const USER_NAV_LINKS = [
   { href: '/', icon: Home, labelKey: 'nav.home', color: 'text-blue-400' },
   { href: '/missions', icon: Map, labelKey: 'nav.missions', color: 'text-purple-400' },
   { href: '/friends', icon: Users, labelKey: 'nav.friends', color: 'text-green-400' },
+  { href: '/reputation', icon: Star, labelKey: 'nav.reputation', color: 'text-amber-400' },
   { href: '/profile', icon: User, labelKey: 'nav.profile', color: 'text-yellow-400' },
 ] as const;
 
 const BUSINESS_NAV_LINKS = [
   { href: '/', icon: Home, labelKey: 'nav.home', color: 'text-blue-400' },
   { href: '/business/verify', icon: ShieldCheck, labelKey: 'nav.verify', color: 'text-emerald-400' },
+  { href: '/business/settings', icon: Store, labelKey: 'nav.settings', color: 'text-purple-400' },
   { href: '/profile', icon: User, labelKey: 'nav.profile', color: 'text-yellow-400' },
 ] as const;
 

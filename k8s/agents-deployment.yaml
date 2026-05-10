@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents
+  namespace: synapse
+  labels:
+    app: agents
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: agents
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: agents
+    spec:
+      terminationGracePeriodSeconds: 30
+      # Spread pods across nodes to avoid single-node failure taking all replicas
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [agents]
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: agents
+          image: ghcr.io/synapse/agents:latest
+          # k3s local build: run `k3s ctr images import agents.tar` after `docker save`
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8001
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: agents-config
+            - secretRef:
+                name: agents-secret
+          resources:
+            requests:
+              cpu: "500m"
+              # sentence-transformers model ~400 MB + overhead
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "3Gi"
+          # Model loading takes ~60s on first startup
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            failureThreshold: 3

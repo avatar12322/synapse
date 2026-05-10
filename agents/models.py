@@ -8,6 +8,7 @@ class UserProfileInput(BaseModel):
     interest_tags: list[str]
     mood_snapshot: Optional[dict] = None
     search_radius_metres: int = 2000
+    embedding: Optional[list[float]] = None  # Phase 3: 768-dim vector from pgvector
 
 
 class VenueInput(BaseModel):

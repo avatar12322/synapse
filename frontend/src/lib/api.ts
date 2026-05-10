@@ -99,6 +99,36 @@ export interface Mission {
   interestTags: string | null;
 }
 
+export interface NfcVerifyRequest {
+  rawPayload: string;
+}
+
+export interface Business {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  category: string;
+  latitude: number;
+  longitude: number;
+  ownerId: number;
+  isActive: boolean;
+  logoUrl?: string;
+}
+
+export interface CreateBusinessRequest {
+  name: string;
+  address: string;
+  city: string;
+  category: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface UpdateBusinessRequest extends Partial<CreateBusinessRequest> {
+  isActive?: boolean;
+}
+
 export interface MatchResult {
   status: 'matched' | 'searching' | 'no_venues';
   missionId: number | null;
@@ -123,6 +153,31 @@ export const missionApi = {
     method: 'POST',
     body: JSON.stringify({ code }),
   }),
+  verifyNfc: (id: number, rawPayload: string) => apiRequest<Mission>(`/missions/${id}/verify-nfc`, {
+    method: 'POST',
+    body: JSON.stringify({ RawPayload: rawPayload }),
+  }),
+};
+
+export const businessApi = {
+  getNearby: (lat: number, lng: number, radius = 2000, category?: string) =>
+    apiRequest<Business[]>(`/businesses/nearby?lat=${lat}&lng=${lng}&radius=${radius}${category ? `&category=${category}` : ''}`),
+  getById: (id: number) => apiRequest<Business>(`/businesses/${id}`),
+  create: (req: CreateBusinessRequest) => apiRequest<Business>('/businesses', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  }),
+  update: (id: number, req: UpdateBusinessRequest) => apiRequest<Business>(`/businesses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(req),
+  }),
+  getMine: () => apiRequest<Business>('/businesses/mine'),
+  seed: () => apiRequest<{ message: string }>('/businesses/seed'),
+};
+
+export const stripeApi = {
+  onboard: () => apiRequest<{ url: string }>('/stripe/connect/onboard', { method: 'POST' }),
+  complete: (accountId: string) => apiRequest<{ chargesEnabled: boolean }>(`/stripe/connect/complete?accountId=${accountId}`, { method: 'POST' }),
 };
 
 export const matchApi = {
@@ -131,4 +186,26 @@ export const matchApi = {
       method: 'POST',
       body: JSON.stringify({ latitude, longitude, category, radiusMetres }),
     }),
+};
+
+export interface UserReputation {
+  userId: number;
+  totalPoints: number;
+  repLevel: number;
+  pointsToNextLevel: number;
+  progressPercent: number;
+  updatedAt: string;
+}
+
+export interface ReputationTransaction {
+  id: number;
+  points: number;
+  reason: string;
+  missionId: number | null;
+  createdAt: string;
+}
+
+export const reputationApi = {
+  getMyReputation: () => apiRequest<UserReputation>('/reputation'),
+  getTransactions: () => apiRequest<ReputationTransaction[]>('/reputation/transactions'),
 };

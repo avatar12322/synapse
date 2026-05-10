@@ -20,6 +20,7 @@ from models import (
 )
 from agents.profiler import run_profiler
 from agents.orchestrator import orchestrate
+from agents.antisybil import AntisybilRequest, SybilScore, run_antisybil
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -60,3 +61,12 @@ async def orchestrate_endpoint(req: OrchestrationRequest) -> OrchestrationRespon
     Supported types: "match", "scout", "profile"
     """
     return await orchestrate(req)
+
+
+@app.post("/antisybil/score", response_model=SybilScore)
+async def antisybil_score(req: AntisybilRequest) -> SybilScore:
+    try:
+        return await run_antisybil(req.user_id)
+    except Exception as exc:
+        logger.error("Anti-sybil error for user %d: %s", req.user_id, exc)
+        raise HTTPException(status_code=500, detail=str(exc))

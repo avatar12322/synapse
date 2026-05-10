@@ -5,8 +5,9 @@ Uses cosine similarity on embeddings + Claude reasoning for a final narrative fi
 from __future__ import annotations
 import json
 import logging
-import math
 from typing import Any
+
+import numpy as np
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -48,9 +49,18 @@ class MatchmakerState(TypedDict):
 
 
 def compute_cosine_similarity(state: MatchmakerState) -> MatchmakerState:
-    # Embeddings come from profiles persisted by the Profiler agent
-    # For Phase 1, we check if they exist; if not, default similarity = 0.5
-    state["cosine_similarity"] = 0.5
+    req = state["request"]
+    emb_a = req.user_a_profile.embedding
+    emb_b = req.user_b_profile.embedding
+    if emb_a and emb_b:
+        a, b = np.array(emb_a, dtype=np.float32), np.array(emb_b, dtype=np.float32)
+        norm_a, norm_b = np.linalg.norm(a), np.linalg.norm(b)
+        if norm_a > 0 and norm_b > 0:
+            state["cosine_similarity"] = float(np.dot(a, b) / (norm_a * norm_b))
+        else:
+            state["cosine_similarity"] = 0.5
+    else:
+        state["cosine_similarity"] = 0.5
     return state
 
 

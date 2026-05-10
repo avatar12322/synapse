@@ -36,7 +36,27 @@
       "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\ksef\\\\Services\")",
       "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\ksef\\\\Endpoints\")",
       "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\dev\\\\synapse\\\\certs\")",
-      "PowerShell(New-Item -ItemType File -Force \"c:\\\\dev\\\\synapse\\\\certs\\\\.gitkeep\")"
+      "PowerShell(New-Item -ItemType File -Force \"c:\\\\dev\\\\synapse\\\\certs\\\\.gitkeep\")",
+      "WebFetch(domain:www.nuget.org)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(dotnet restore *)",
+      "PowerShell(dotnet nuget search \"H3\" --take 5 2>&1)",
+      "WebSearch",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\avata\\\\.nuget\\\\packages\" | Select-Object Name | Where-Object { $_.Name -match \"h3|pocket\" })",
+      "PowerShell($dll = \"C:\\\\Users\\\\avata\\\\.nuget\\\\packages\\\\pocketken.h3\\\\4.0.0\\\\lib\\\\netstandard2.0\\\\pocketken.H3.dll\"; try { $asm = [System.Reflection.Assembly]::UnsafeLoadFrom\\($dll\\); $types = $asm.GetExportedTypes\\(\\); $types | ForEach-Object { $t = $_; \"$\\($t.FullName\\)\" } } catch { \"Error: $_\" })",
+      "PowerShell($dll = \"C:\\\\Users\\\\avata\\\\.nuget\\\\packages\\\\pocketken.h3\\\\4.0.0\\\\lib\\\\net6.0\\\\pocketken.H3.dll\"; $bytes = [System.IO.File]::ReadAllBytes\\($dll\\); $memStream = New-Object System.IO.MemoryStream\\(,$bytes\\); Add-Type -AssemblyName System.Reflection.Metadata; [System.Reflection.Assembly]::Load\\($bytes\\).GetExportedTypes\\(\\) | Select-Object -ExpandProperty FullName)",
+      "PowerShell($headers = @{\"Accept\" = \"application/vnd.github.v3.raw\"}; try { $content = Invoke-WebRequest -Uri \"https://api.github.com/repos/pocketken/H3.net/contents/src/H3/Algorithms/Hierarchy.cs\" -Headers $headers -ErrorAction Stop; [System.Text.Encoding]::UTF8.GetString\\([System.Convert]::FromBase64String\\($content.Content\\)\\) } catch { \"Hierarchy.cs not found or error: $_\" })",
+      "PowerShell($headers = @{\"Accept\" = \"application/vnd.github.v3.raw\"}; \\(Invoke-WebRequest -Uri \"https://api.github.com/repos/pocketken/H3.net/contents/src/H3\" -Headers $headers\\).Content | ConvertFrom-Json | Select-Object -ExpandProperty name)",
+      "Bash(curl -s \"https://api.github.com/repos/pocketken/H3.net/contents/src/H3\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/pocketken/H3.net/main/src/H3/Algorithms/Hierarchy.cs\")",
+      "Bash(curl -s \"https://api.github.com/repos/pocketken/H3.net/git/trees/main?recursive=1\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/pocketken/H3.net/main/src/H3/\")",
+      "Bash(curl -s \"https://api.github.com/repos/pocketken/H3.net/contents/src/H3?per_page=100\")",
+      "Bash(curl -s \"https://api.github.com/repos/pocketken/H3.net/git/trees/main\")",
+      "PowerShell(New-Item -ItemType Directory -Path \"c:\\\\dev\\\\synapse\\\\agents\\\\scripts\" -Force)",
+      "PowerShell(New-Item -ItemType Directory -Path \"c:\\\\dev\\\\synapse\\\\agents\\\\models\" -Force)",
+      "Bash(npx tsc *)"
     ]
   }
 }

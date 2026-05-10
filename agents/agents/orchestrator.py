@@ -5,6 +5,9 @@ Called by the .NET backend via HTTP POST /orchestrate.
 from __future__ import annotations
 import logging
 
+import asyncpg
+
+from config import settings
 from models import (
     MatchRequest,
     MissionProposal,
@@ -17,6 +20,23 @@ from agents.scout import run_scout
 from agents.matchmaker import run_matchmaker
 
 logger = logging.getLogger(__name__)
+
+
+async def _fetch_embedding(user_id: int) -> list[float] | None:
+    """Load 768-dim embedding from UserProfiles table; returns None if not found."""
+    try:
+        conn = await asyncpg.connect(settings.database_url)
+        try:
+            row = await conn.fetchrow(
+                'SELECT "Embedding"::text FROM "UserProfiles" WHERE "UserId" = $1', user_id
+            )
+            if row and row[0]:
+                return [float(x) for x in row[0].strip("[]").split(",")]
+        finally:
+            await conn.close()
+    except Exception as exc:
+        logger.warning("Could not fetch embedding for user %d: %s", user_id, exc)
+    return None
 
 
 async def orchestrate(req: OrchestrationRequest) -> OrchestrationResponse:
@@ -39,6 +59,12 @@ async def orchestrate(req: OrchestrationRequest) -> OrchestrationResponse:
 
             case "match":
                 match_req = MatchRequest(**req.payload)
+
+                # Enrich profiles with embeddings from pgvector for cosine similarity
+                if match_req.user_a_profile.embedding is None:
+                    match_req.user_a_profile.embedding = await _fetch_embedding(match_req.user_a_id)
+                if match_req.user_b_profile.embedding is None:
+                    match_req.user_b_profile.embedding = await _fetch_embedding(match_req.user_b_id)
 
                 # Scout on behalf of both users combined
                 from models import UserProfileInput

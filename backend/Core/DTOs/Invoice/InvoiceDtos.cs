@@ -16,5 +16,8 @@ public record InvoiceStatusDto(
     DateTime CreatedAt,
     DateTime? SentAt,
     DateTime? UpoReceivedAt,
-    string? ErrorMessage
+    string? ErrorMessage,
+    // Phase 4: jurisdiction routing
+    string InvoiceType,
+    decimal VatRatePct
 );

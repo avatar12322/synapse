@@ -14,27 +14,30 @@ adaptuje wizję do realnego stacku scaffoldu (różni się od raportu — patrz 
 
 ## 1. Co już jest (stan repozytorium)
 
-Repo to scaffold z projektu „Questify" przekształcony w `Synapse`. **Fazy 0, 1 i 2 ukończone.**
+Repo to scaffold z projektu „Questify" przekształcony w `Synapse`. **Fazy 0, 1, 2, 3 i 4 ukończone.**
 
 | Warstwa          | Co jest                                                                                                                                              |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Backend          | [backend/](backend/) — **.NET 9** minimal API, EF Core 9, JWT (httpOnly cookie), Postgres + Redis (lub in-memory fallback). Clean Arch: Api/Core/Infrastructure |
-| Modele DB        | [User](backend/Core/Models/User/User.cs), [Business](backend/Core/Models/Business/Business.cs), [Mission](backend/Core/Models/Mission/Mission.cs), [UserProfile](backend/Core/Models/User/UserProfile.cs), [KsefInvoice](backend/Core/Models/Invoice/KsefInvoice.cs), Friendship, Notification |
-| Endpointy        | `/api/missions` (CRUD + accept/lock/cancel/verify/**verify-nfc**), `/api/businesses` (nearby + CRUD + webhook-secret + nfc-secret), `/api/match`, `/ws/presence`, `/api/stripe/*`, `/api/webhooks/pos`, `/api/invoices/*`, `/api/notifications` |
-| Baza danych      | Migracje: `Phase1_InitialSchema` + `Phase2_PosNfcSecretsAndKsefInvoices` — PostGIS, pgvector, KsefInvoices, PosWebhookSecret, NfcSecret, VerifiedByPos |
-| Frontend         | [frontend/](frontend/) — **Next.js 15** (Turbopack) + React 19 + TanStack Query + Tailwind v4 + Radix + framer-motion + i18next (PL/EN). |
-| Python agents    | [agents/](agents/) — **FastAPI + LangGraph**, 4 agenty (Profiler / Scout / Matchmaker / Orchestrator), Gemini 2.5 Flash, sentence-transformers (768-dim embeddings) |
+| Modele DB        | [User](backend/Core/Models/User/User.cs) (+ DeviceFingerprint/LastKnownIp/LastKnownBssid), [Business](backend/Core/Models/Business/Business.cs) (+ H3Index + **TenantId**), [Mission](backend/Core/Models/Mission/Mission.cs), [UserProfile](backend/Core/Models/User/UserProfile.cs) (+ LastKnownH3/CapturedAt + **EncryptedEmbedding**), [KsefInvoice](backend/Core/Models/Invoice/KsefInvoice.cs) (+ **InvoiceType + VatRatePct**), **[Tenant](backend/Core/Models/Tenant/Tenant.cs)**, Friendship, Notification |
+| Endpointy        | `/api/missions` (CRUD + accept/lock/cancel/verify/**verify-nfc**), `/api/businesses` (nearby + CRUD + webhook-secret + nfc-secret), `/api/match` (geosharded H3), `/ws/presence` (Redis Streams), `/api/stripe/*`, `/api/webhooks/pos`, `/api/invoices/*`, `/api/notifications`, **`/api/tenant/branding` (public)**, **`/api/tenants` (admin CRUD)**, **`/api/internal/profile/embedding` (internal)** |
+| Baza danych      | Migracje: `Phase1_InitialSchema` + `Phase2_PosNfcSecretsAndKsefInvoices` + `Phase3_H3AndFingerprint` + **`Phase4_TenantAndEncryptedEmbedding`** — tabela `Tenants`, `TenantId` na Business, `EncryptedEmbedding` na UserProfile, `InvoiceType`+`VatRatePct` na KsefInvoice |
+| Frontend         | [frontend/](frontend/) — **Next.js 15** (Turbopack) + React 19 + TanStack Query + Tailwind v4 + Radix + framer-motion + i18next (PL/EN). **TenantProvider** (`src/components/TenantProvider.tsx`) — white-label CSS custom properties (`--color-brand-primary`, `--color-brand-secondary`) |
+| Python agents    | [agents/](agents/) — **FastAPI + LangGraph**, 5 agentów (Profiler / Scout / Matchmaker / Orchestrator / **Anti-Sybil**), Gemini 2.5 Flash, sentence-transformers (768-dim embeddings), cosine similarity z pgvector, sklearn RandomForest. **Phase 4:** profiler wywołuje `/api/internal/profile/embedding` po persist (szyfrowany zapis) |
 | Capacitor plugins | [frontend/native-plugins/](frontend/native-plugins/) — `screen-lock-guard`, `presence-verifier`, `anti-spoof`, **`nfc-presence`** (Swift + Kotlin + TS bridge) |
 | KSeF service     | [ksef/](ksef/) — **osobny ASP.NET Core 9** na porcie 8002 (docker profile: `ksef`). Auth challenge-response, XML FA(3), AES+RSA szyfrowanie, UPO polling, PDF/A-3 z QR |
 | Mobile wrap      | [capacitor.config.ts](frontend/capacitor.config.ts) — **Capacitor 8** (iOS + Android), appId `com.synapse.app`                                       |
-| Infra dev        | [docker-compose.yml](docker-compose.yml) — Postgres 16 + Redis 7 + Adminer + agents (profil: agents) + **ksef** (profil: ksef)                       |
+| Kubernetes       | [k8s/](k8s/) — namespace, agents + **backend + frontend** Deployments/Services, HPA (min3/max10 CPU 70%), Kustomization — gotowe na k3s |
+| CI/CD            | [.github/workflows/](.github/workflows/) — **4 pipelines**: `backend.yml`, `agents.yml`, `frontend.yml`, `ksef.yml`. Build + test + docker push do `ghcr.io/synapse/*` na merge do `master` |
+| Dockerfiles      | `backend/Dockerfile` (multi-stage SDK→runtime), `frontend/Dockerfile` (node→nginx static) |
+| Infra dev        | [docker-compose.yml](docker-compose.yml) — Postgres 16 + Redis 7 + Adminer + agents (profil: agents) + ksef (profil: ksef) + **Neo4j 5** (profil: antisybil) |
 
 **Co NIE jest zrobione (pozostałe z Fazy 1):**
 - iOS Live Activity z timerem (ActivityKit + Dynamic Island) — plugin `mission-hud`
 - Android persistent foreground notification z licznikiem
 
-**Co NIE jest zrobione (Fazy 3–4):**
-geosharding Redis, Kafka, Pinecone, Kubernetes, Anti-Sybil ML, Apple Watch companion, CI/CD, multi-jurisdiction VAT.
+**Co NIE jest zrobione (odłożone):**
+Migracja do Kafka/Redpanda (>10k DAU), Pinecone/Milvus, Apple Watch companion, TEE hardware deployment (Gramine/SGX).
 
 ---
 
@@ -150,18 +153,24 @@ Auth + JWT, Postgres + Redis, podstawowe modele, Capacitor wired up, Next.js dev
 - [ ] Card-Linked Offers przez Mastercard Offers API (alternatywa, odłożone)
 - [ ] Apple Watch / Wear OS companion (Faza 3)
 
-### Faza 3 — Skalowanie
-- [ ] Geosharding Redis (klucz: H3 res 6, czyli ~36 km²) — zastąpić single-node
+### Faza 3 — Skalowanie (✅ ukończona)
+- [x] **Geosharding Redis** — klucz kolejki `match:queue:<h3cell>:<category>` (res 6, ~36 km²); szukanie partnera w własnej komórce + k-ring distance 1 (granice komórek); migracja `Phase3_H3AndFingerprint`; `pocketken.H3 v4.0.0` w `backend.csproj`
+- [x] **Redis Streams dla presence** — `IPresencePublisher` / `RedisPresencePublisher` / `PresenceStreamConsumer` (`BackgroundService`); fan-out per-pod (każdy pod śledzi własną pozycję w streamie); fallback in-memory gdy brak `REDIS_CONNECTION_STRING`; klucz `presence:stream:{missionId}` MAXLEN=100
+- [x] **Naprawa cosine similarity** w matchmakerze — zastąpiono stub (zawsze 0.5) prawdziwym `np.dot(a,b)/(‖a‖·‖b‖)`; embeddingi fetchowane z Postgres `UserProfiles` via asyncpg przed wywołaniem matchmakera; `UserProfileInput.embedding: list[float] | None` dodane do `agents/models.py`
+- [x] **Kubernetes (k3s)** — `k8s/`: namespace `synapse`, ConfigMap, Secret template, Deployment (replicas:3, imagePullPolicy:IfNotPresent, resources 500m/1Gi req → 2/3Gi limits, readinessProbe delay 60s), ClusterIP Service (port 8001), HPA autoscaling/v2 (min3/max10, CPU 70%), Kustomization
+- [x] **Anti-Sybil ML** — `agents/agents/antisybil.py` (LangGraph: `build_features` + `classify`); cechy: device_collision, ip_collision, bssid_collision, mission_count_30d, unique_partners_30d, opcjonalnie neo4j_component_size; RandomForest z `agents/models/antisybil_rf.pkl` lub fallback heurystyczny; endpoint `POST /antisybil/score`; skrypt treningowy `agents/scripts/train_antisybil.py`; Neo4j 5 w `docker-compose.yml` pod profilem `antisybil`; `X-Device-Fingerprint` + `X-Device-Bssid` headers capture na loginie w `.NET`; `scikit-learn==1.5.0`, `neo4j==5.20.0`, `numpy==2.0.0`, `pandas==2.2.2` w `agents/requirements.txt`
+- [x] **GDPR pseudonimizacja H3** — `H3PseudonymizationService` (`BackgroundService`, co 6h, batch 500); degraduje `UserProfile.LastKnownH3` z res 9 → res 7 po 30 dniach; res 9 capture przy każdym zapytaniu match; RODO art. 5 minimalizacja danych
 - [ ] Migracja event-bus: Redis Streams → Kafka/Redpanda (gdy >10k DAU)
 - [ ] Migracja embedding store: pgvector → Pinecone Serverless lub Milvus on K8s
-- [ ] Kubernetes (k3s lub managed) dla agentów Pythona — autoscaling per HPA
-- [ ] Anti-Sybil ML: graf Neo4j (relacje misji), klasyfikator (RandomForest baseline → GNN docelowo), reguły heurystyczne na BSSID/IP/device fingerprint
-- [ ] Pseudonimizacja archiwum: H3 res 9 → res 7 po 30 dniach (RODO art. 5 minimalizacja)
 
-### Faza 4 — Ekspansja regionalna
-- [ ] Multi-tenant / multi-jurisdiction (prawo VAT per kraj)
-- [ ] Confidential Matching w TEE (Intel SGX / AMD SEV-SNP) dla embeddings — zero-trust
-- [ ] White-label dla sieci coworkingów
+### Faza 4 — Ekspansja regionalna (✅ ukończona)
+- [x] **Multi-tenant + White-label** — model `Tenant` (Slug, Country, VatRatePct, PrimaryColor, SecondaryColor, CustomDomain), `TenantId` FK na Business, `TenantResolutionMiddleware` (X-Tenant-Slug header → subdomena → CustomDomain), `ITenantContext` (scoped, cache 5 min), endpointy `/api/tenant/branding` (public) + `/api/tenants` (admin CRUD), `TenantProvider` w Next.js (CSS custom properties)
+- [x] **Multi-jurisdiction VAT** — `JurisdictionService` (PL=23%, DE=19%, FR=20%, CZ=21%, SK=20% itd.), routing: PL→KSeF (istniejący flow), inne→`EuInvoicePdfService` (QuestPDF, standard EU PDF), `InvoiceType` + `VatRatePct` na KsefInvoice, `InvoiceAggregatorService` inject ITenantContext
+- [x] **Confidential Matching (TEE-ready)** — `EmbeddingEncryptionService` (AES-256-GCM, klucz z `EMBEDDING_ENCRYPTION_KEY` env, 12B nonce|ciphertext|16B tag = 3100B), `UserProfile.EncryptedEmbedding` (bytea), endpoint `POST /api/internal/profile/embedding` (X-Internal-Secret auth), profiler agent wywołuje endpoint po asyncpg upsert (non-fatal), skrypt `agents/scripts/migrate_embeddings.py`
+- [x] **CI/CD** — 4× GitHub Actions (backend/agents/frontend/ksef), docker push do `ghcr.io/synapse/*`, `backend/Dockerfile` + `frontend/Dockerfile` + `frontend/nginx.conf`, k8s: backend + frontend Deployment/Service/Secret
+- [ ] TEE hardware deployment (Gramine + Intel SGX / AMD SEV-SNP) — architektura gotowa, klucz inject via attestation
+- [ ] Multi-jurisdiction VAT: więcej jurysdykcji poza EU (US/UK/UA)
+- [ ] White-label: custom mobile app per tenant (osobny appId Capacitor)
 
 ---
 
@@ -245,6 +254,52 @@ Dev-server IP do iOS/Android symulatora:
 ustaw `DEV_SERVER_IP` w `frontend/.env.local` (musi być IP w LAN, nie `localhost`).
 
 Zmienne środowiskowe Fazy 2 — patrz [`.env.example`](.env.example).
+
+```powershell
+# Faza 3 — Anti-Sybil z Neo4j (opcjonalnie)
+docker compose --profile antisybil up -d       # neo4j na :7474 (HTTP) / :7687 (Bolt)
+# ustaw w .env: NEO4J_URI=bolt://localhost:7687, NEO4J_USER=neo4j, NEO4J_PASSWORD=synapse
+curl -X POST http://localhost:8001/antisybil/score -H "Content-Type: application/json" -d '{"user_id":1}'
+
+# Trenowanie modelu Anti-Sybil (offline, wymaga CSV z labelami)
+cd agents
+python scripts/train_antisybil.py --csv data/labelled_users.csv --output models/antisybil_rf.pkl
+
+# Kubernetes (k3s)
+kubectl apply -k k8s/
+kubectl get pods -n synapse
+kubectl get hpa -n synapse
+```
+
+```powershell
+# Faza 4 — Multi-tenant, White-label, Encrypted Embeddings
+
+# Tworzenie tenanta (wymagany token admina)
+curl -X POST http://localhost:5000/api/tenants `
+  -H "Authorization: Bearer <token>" -H "Content-Type: application/json" `
+  -d '{"slug":"acme","name":"Acme Coworking","country":"DE","vatRatePct":0.19,"primaryColor":"#e11d48"}'
+
+# Sprawdzanie brandingu (publiczny endpoint)
+curl -H "X-Tenant-Slug: acme" http://localhost:5000/api/tenant/branding
+curl http://localhost:5000/api/tenant/branding   # fallback: Synapse defaults
+
+# Migracja istniejących embeddingów do zaszyfrowanych (jednorazowo po deploy)
+cd agents
+$env:SYNAPSE_API_URL="http://localhost:5000"
+$env:INTERNAL_API_SECRET="<z .env>"
+python scripts/migrate_embeddings.py
+
+# Generowanie klucza szyfrowania embeddingów (32 bajty = 64 znaki hex)
+-join ((1..32) | ForEach-Object { "{0:x2}" -f (Get-Random -Maximum 256) })
+# Wstaw jako EMBEDDING_ENCRYPTION_KEY w .env
+```
+
+Nowe zmienne środowiskowe Fazy 4 (dodaj do `.env`):
+```
+EMBEDDING_ENCRYPTION_KEY=<64 hex znaków — 32 bajty AES-256>
+EU_INVOICE_PDF_OUTPUT=/tmp/invoices          # ścieżka do PDF faktur EU (opcjonalnie)
+# INTERNAL_API_SECRET już istnieje z Fazy 2 — używany też przez /api/internal/profile/embedding
+```
 
 ---
 

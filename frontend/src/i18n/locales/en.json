@@ -30,7 +30,9 @@
     "missions": "Missions",
     "friends": "Friends",
     "profile": "Profile",
-    "verify": "Verify"
+    "verify": "Verify",
+    "reputation": "Reputation",
+    "settings": "Settings"
   },
   "home": {
     "title": "Your Missions",
@@ -108,7 +110,33 @@
     "interestTags": "Shared Interests",
     "description": "Mission Brief",
     "copiedCode": "Code copied!",
-    "tapToCopy": "Tap to copy"
+    "tapToCopy": "Tap to copy",
+    "scanNfc": "Scan NFC",
+    "partnerNearby": "Partner is nearby",
+    "partnerAway": "Partner moved away"
+  },
+  "reputation": {
+    "title": "Reputation",
+    "level": "Level",
+    "points": "points",
+    "totalPoints": "Total Points",
+    "nextLevel": "To next level",
+    "maxLevel": "Maximum level reached!",
+    "noTransactions": "No points yet. Complete your first mission!",
+    "transactionsTitle": "Points History",
+    "reasons": {
+      "MissionCompleted": "Mission completed",
+      "NfcVerification": "NFC verification",
+      "FirstMission": "First mission",
+      "Streak": "Mission streak"
+    },
+    "levels": {
+      "1": "Novice",
+      "2": "Seeker",
+      "3": "Explorer",
+      "4": "Veteran",
+      "5": "Legend"
+    }
   },
   "business": {
     "verifyTitle": "Verify Mission",
@@ -119,6 +147,16 @@
     "success": "Mission Verified!",
     "successSubtext": "Mission #{{id}} is complete. Commission will be processed automatically.",
     "error": "Invalid or expired code, or the minimum lock time hasn't been reached yet.",
-    "panelTitle": "Business Panel"
+    "panelTitle": "Business Panel",
+    "settingsTitle": "Business Settings",
+    "stripeOnboarding": "Payment Setup (Stripe)",
+    "stripeOnboardButton": "Connect with Stripe",
+    "stripeStatusEnabled": "Payments active",
+    "stripeStatusDisabled": "Payments inactive",
+    "editProfile": "Edit Profile",
+    "businessName": "Business Name",
+    "businessAddress": "Address",
+    "businessCity": "City",
+    "saveChanges": "Save Changes"
   }
 }

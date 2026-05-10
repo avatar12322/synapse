@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Synapse.Core.DTOs.Invoice;
 using Synapse.Core.Models.Invoice;
 using Synapse.Core.Models.Mission;
+using Synapse.Core.Services.Tenant;
 using Synapse.Infrastructure.Data;
 
 namespace Synapse.Core.Services.Invoice;
@@ -14,13 +15,25 @@ public interface IInvoiceAggregatorService
     Task<bool> UpdateInvoiceStatusAsync(Guid invoiceId, KsefInvoiceStatus status, string? referenceNumber, string? error, CancellationToken ct = default);
 }
 
-public class InvoiceAggregatorService(SynapseDbContext db, IConfiguration config) : IInvoiceAggregatorService
+public class InvoiceAggregatorService(
+    SynapseDbContext db,
+    IConfiguration config,
+    ITenantContext tenantCtx,
+    IJurisdictionService jurisdiction,
+    IEuInvoicePdfService euPdf) : IInvoiceAggregatorService
 {
     public async Task<InvoiceStatusDto?> CreateInvoiceAsync(
         int businessId, DateOnly periodStart, DateOnly periodEnd, CancellationToken ct)
     {
-        var business = await db.Businesses.FindAsync([businessId], ct);
+        var business = await db.Businesses
+            .Include(b => b.Tenant)
+            .FirstOrDefaultAsync(b => b.Id == businessId, ct);
         if (business is null) return null;
+
+        // Phase 4: determine jurisdiction — tenant country wins, fallback to "PL"
+        var country = tenantCtx.Current?.Country ?? business.Tenant?.Country ?? "PL";
+        var vatRate = tenantCtx.Current?.VatRatePct ?? jurisdiction.GetDefaultVatRate(country);
+        var invoiceType = jurisdiction.GetInvoiceType(country);
 
         var periodStartDt = periodStart.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
         var periodEndDt = periodEnd.ToDateTime(TimeOnly.MaxValue, DateTimeKind.Utc);
@@ -43,14 +56,19 @@ public class InvoiceAggregatorService(SynapseDbContext db, IConfiguration config
             PeriodEnd = periodEnd,
             TotalAmountCents = totalCents,
             MissionCount = missions.Count,
-            Status = KsefInvoiceStatus.Pending
+            Status = KsefInvoiceStatus.Pending,
+            InvoiceType = invoiceType,
+            VatRatePct = vatRate
         };
 
         db.KsefInvoices.Add(invoice);
         await db.SaveChangesAsync(ct);
 
-        // Fire-and-forget to KSeF service if configured
-        _ = TriggerKsefServiceAsync(invoice.Id, ct);
+        // Route invoice generation based on jurisdiction
+        if (invoiceType == InvoiceType.KSeF)
+            _ = TriggerKsefServiceAsync(invoice.Id, ct);
+        else
+            _ = GenerateEuPdfAsync(invoice, business, ct);
 
         return ToDto(invoice);
     }
@@ -103,8 +121,28 @@ public class InvoiceAggregatorService(SynapseDbContext db, IConfiguration config
         }
     }
 
+    private async Task GenerateEuPdfAsync(KsefInvoice invoice, Core.Models.Business.Business business, CancellationToken ct)
+    {
+        try
+        {
+            var pdfBytes = await euPdf.GeneratePdfAsync(invoice, business, ct);
+            var outputDir = Environment.GetEnvironmentVariable("EU_INVOICE_PDF_OUTPUT") ?? "/tmp/invoices";
+            Directory.CreateDirectory(outputDir);
+            var path = Path.Combine(outputDir, $"{invoice.Id}.pdf");
+            await File.WriteAllBytesAsync(path, pdfBytes, ct);
+
+            invoice.PdfPath = path;
+            await db.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            // Non-fatal — invoice record already saved, PDF can be regenerated
+        }
+    }
+
     private static InvoiceStatusDto ToDto(KsefInvoice i) => new(
         i.Id, i.BusinessId, i.PeriodStart, i.PeriodEnd,
         i.TotalAmountCents, i.MissionCount, i.Status.ToString(),
-        i.KsefReferenceNumber, i.CreatedAt, i.SentAt, i.UpoReceivedAt, i.ErrorMessage);
+        i.KsefReferenceNumber, i.CreatedAt, i.SentAt, i.UpoReceivedAt, i.ErrorMessage,
+        i.InvoiceType.ToString(), i.VatRatePct);
 }

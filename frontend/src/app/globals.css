@@ -4,6 +4,9 @@
 :root {
   --background: #0f172a;
   --foreground: #f1f5f9;
+  /* Phase 4: overridden at runtime by TenantProvider */
+  --color-brand-primary: #7c3aed;
+  --color-brand-secondary: #1e293b;
 }
 
 body {

@@ -1,6 +1,8 @@
 """
 Profiler agent — builds and updates user embeddings from interest tags + mood snapshots.
 Uses sentence-transformers locally so raw profile text never leaves the device (CLAUDE.md §4).
+Phase 4: after persisting plaintext embedding, calls .NET /api/internal/profile/embedding
+to store an AES-256-GCM encrypted copy — key never leaves the .NET process (TEE-ready).
 """
 from __future__ import annotations
 import json
@@ -8,6 +10,7 @@ import logging
 from typing import Any
 
 import asyncpg
+import httpx
 from langgraph.graph import StateGraph, END
 from sentence_transformers import SentenceTransformer
 from typing_extensions import TypedDict
@@ -92,6 +95,21 @@ async def persist_embedding(state: ProfilerState) -> ProfilerState:
     except Exception as exc:
         logger.error("Persist embedding error: %s", exc)
         state["error"] = str(exc)
+        return state
+
+    # Phase 4: store AES-256-GCM encrypted copy via .NET backend.
+    # Non-fatal — plaintext embedding already persisted above.
+    if settings.synapse_api_url:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                await client.post(
+                    f"{settings.synapse_api_url}/api/internal/profile/embedding",
+                    json={"userId": state["request"].user_id, "embedding": state["embedding"]},
+                    headers={"X-Internal-Secret": settings.internal_api_secret},
+                )
+        except Exception as exc:
+            logger.warning("Encrypted embedding store failed (non-fatal): %s", exc)
+
     return state
 
 

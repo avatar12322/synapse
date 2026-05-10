@@ -30,6 +30,16 @@ public class User
     [MaxLength(100)]
     public string? StripeCustomerId { get; set; }
 
+    // Phase 3 Anti-Sybil: device signals captured at login / match request
+    [MaxLength(200)]
+    public string? DeviceFingerprint { get; set; }   // SHA-256(deviceId+platform+model) from X-Device-Fingerprint header
+
+    [MaxLength(45)]
+    public string? LastKnownIp { get; set; }          // IPv4 or IPv6
+
+    [MaxLength(17)]
+    public string? LastKnownBssid { get; set; }       // WiFi BSSID from presence-verifier plugin (optional)
+
     public ICollection<Social.Friendship> InitiatedFriendships { get; set; } = new List<Social.Friendship>();
     public ICollection<Social.Friendship> ReceivedFriendships { get; set; } = new List<Social.Friendship>();
 }

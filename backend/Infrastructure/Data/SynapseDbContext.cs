@@ -6,6 +6,7 @@ using Synapse.Core.Models.Notification;
 using Synapse.Core.Models.Business;
 using Synapse.Core.Models.Mission;
 using Synapse.Core.Models.Invoice;
+using Synapse.Core.Models.Tenant;
 
 namespace Synapse.Infrastructure.Data;
 
@@ -15,11 +16,14 @@ public class SynapseDbContext : DbContext
 
     public DbSet<User> Users { get; set; }
     public DbSet<UserProfile> UserProfiles { get; set; }
+    public DbSet<UserReputation> UserReputations { get; set; }
+    public DbSet<ReputationTransaction> ReputationTransactions { get; set; }
     public DbSet<Friendship> Friendships { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Business> Businesses { get; set; }
     public DbSet<Mission> Missions { get; set; }
     public DbSet<KsefInvoice> KsefInvoices { get; set; }
+    public DbSet<Tenant> Tenants { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -80,11 +84,21 @@ public class SynapseDbContext : DbContext
              .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<Tenant>(e =>
+        {
+            e.HasKey(t => t.Id);
+            e.HasIndex(t => t.Slug).IsUnique();
+            e.HasIndex(t => t.CustomDomain);
+            e.Property(t => t.VatRatePct).HasColumnType("decimal(5,4)");
+        });
+
         modelBuilder.Entity<Business>(e =>
         {
             e.HasKey(b => b.Id);
             e.HasIndex(b => b.City);
             e.HasIndex(b => b.Category);
+            e.HasIndex(b => b.H3Index);
+            e.HasIndex(b => b.TenantId);
 
             // Geography type gives metre-based distance calculations
             e.Property(b => b.Location)
@@ -98,6 +112,11 @@ public class SynapseDbContext : DbContext
              .WithMany()
              .HasForeignKey(b => b.OwnerId)
              .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(b => b.Tenant)
+             .WithMany(t => t.Businesses)
+             .HasForeignKey(b => b.TenantId)
+             .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<KsefInvoice>(e =>
@@ -105,11 +124,34 @@ public class SynapseDbContext : DbContext
             e.HasKey(i => i.Id);
             e.HasIndex(i => new { i.BusinessId, i.Status });
             e.HasIndex(i => i.KsefReferenceNumber);
+            e.Property(i => i.VatRatePct).HasColumnType("decimal(5,4)");
 
             e.HasOne(i => i.Business)
              .WithMany(b => b.KsefInvoices)
              .HasForeignKey(i => i.BusinessId)
              .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<UserReputation>(e =>
+        {
+            e.HasKey(r => r.Id);
+            e.HasIndex(r => r.UserId).IsUnique();
+
+            e.HasOne(r => r.User)
+             .WithMany()
+             .HasForeignKey(r => r.UserId)
+             .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReputationTransaction>(e =>
+        {
+            e.HasKey(t => t.Id);
+            e.HasIndex(t => new { t.UserReputationId, t.CreatedAt });
+
+            e.HasOne(t => t.UserReputation)
+             .WithMany(r => r.Transactions)
+             .HasForeignKey(t => t.UserReputationId)
+             .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Mission>(e =>

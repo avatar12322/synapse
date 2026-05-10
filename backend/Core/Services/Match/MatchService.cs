@@ -1,3 +1,5 @@
+using H3;
+using H3.Algorithms;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using NetTopologySuite.Geometries;
@@ -15,18 +17,13 @@ public interface IMatchService
 
 public class MatchService(SynapseDbContext db, IDistributedCache cache, GeometryFactory gf) : IMatchService
 {
-    // Redis key prefix for the matching queue; value = JSON array of waiting user entries
-    private const string QueueKeyPrefix = "match:queue:";
-
     public async Task<MatchResponse> RequestMatchAsync(int userId, MatchRequest req, CancellationToken ct)
     {
-        // Find nearby active businesses
         var center = gf.CreatePoint(new Coordinate(req.Longitude, req.Latitude));
         center.SRID = 4326;
 
         var businessQuery = db.Businesses.Where(b =>
             b.IsActive && b.Location.IsWithinDistance(center, req.RadiusMetres));
-
         if (req.Category is not null)
             businessQuery = businessQuery.Where(b => b.Category == req.Category);
 
@@ -38,17 +35,6 @@ public class MatchService(SynapseDbContext db, IDistributedCache cache, Geometry
         if (businesses.Count == 0)
             return new MatchResponse("no_venues", null, "No active venues in range.");
 
-        // Check if another user is already waiting (queue stored in Redis / distributed cache)
-        var queueKey = QueueKey(req.Category ?? "any");
-        var queueJson = await cache.GetStringAsync(queueKey, ct);
-        var queue = queueJson is not null
-            ? JsonSerializer.Deserialize<List<WaitingEntry>>(queueJson) ?? []
-            : new List<WaitingEntry>();
-
-        // Remove stale entries (> 5 min old)
-        queue.RemoveAll(e => (DateTime.UtcNow - e.EnqueuedAt).TotalMinutes > 5);
-
-        // Avoid self-match and users already in an active mission
         var existing = await db.Missions.AnyAsync(m =>
             (m.UserAId == userId || m.UserBId == userId) &&
             m.Status != MissionStatus.Expired &&
@@ -58,24 +44,34 @@ public class MatchService(SynapseDbContext db, IDistributedCache cache, Geometry
         if (existing)
             return new MatchResponse("searching", null, "You already have an active mission.");
 
-        var partner = queue.FirstOrDefault(e => e.UserId != userId);
+        // Geosharding: queue key scoped to H3 res-6 cell (~36 km²)
+        var userCell = H3Index.FromPoint(center, 6);
+        var category = req.Category ?? "any";
+
+        // Search own cell first, then immediate neighbors to handle cell boundary crossings
+        var (partner, partnerQueueKey) = await FindPartnerAsync(userCell, category, userId, ct);
+        if (partner is null)
+        {
+            foreach (var ring in userCell.GridDiskDistances(1))
+            {
+                if (ring.Index == userCell) continue;
+                (partner, partnerQueueKey) = await FindPartnerAsync(ring.Index, category, userId, ct);
+                if (partner is not null) break;
+            }
+        }
 
         if (partner is not null)
         {
-            queue.Remove(partner);
-            await SaveQueue(queueKey, queue, ct);
+            // Remove matched partner from their shard queue
+            var pQueueKey = QueueKey(ring: null, cell: partnerQueueKey.Split(':')[2], category);
+            await RemoveFromQueue(partnerQueueKey, partner.UserId, ct);
 
-            // Pick best business (closest to midpoint between the two users)
-            var partnerCenter = gf.CreatePoint(new Coordinate(partner.Longitude, partner.Latitude));
-            partnerCenter.SRID = 4326;
-            var midLat = (req.Latitude + partner.Latitude) / 2;
-            var midLng = (req.Longitude + partner.Longitude) / 2;
-            var midpoint = gf.CreatePoint(new Coordinate(midLng, midLat));
+            var midpoint = gf.CreatePoint(new Coordinate(
+                (req.Longitude + partner.Longitude) / 2,
+                (req.Latitude + partner.Latitude) / 2));
             midpoint.SRID = 4326;
 
-            var bestBusiness = businesses
-                .OrderBy(b => b.Location.Distance(midpoint))
-                .First();
+            var bestBusiness = businesses.OrderBy(b => b.Location.Distance(midpoint)).First();
 
             var mission = new Models.Mission.Mission
             {
@@ -89,7 +85,9 @@ public class MatchService(SynapseDbContext db, IDistributedCache cache, Geometry
                 UserBId = partner.UserId,
                 DiscountPercent = bestBusiness.DefaultDiscountPercent,
                 DiscountDescription = $"{bestBusiness.DefaultDiscountPercent}% off your order",
-                ExpiresAt = DateTime.UtcNow.AddHours(2)
+                ExpiresAt = DateTime.UtcNow.AddHours(2),
+                H3Index = bestBusiness.H3Index
+                    ?? H3Index.FromPoint(bestBusiness.Location, 6).ToString()
             };
 
             db.Missions.Add(mission);
@@ -98,12 +96,50 @@ public class MatchService(SynapseDbContext db, IDistributedCache cache, Geometry
             return new MatchResponse("matched", mission.Id, null);
         }
 
-        // No partner yet — enqueue this user
-        queue.RemoveAll(e => e.UserId == userId);  // replace any stale own entry
-        queue.Add(new WaitingEntry(userId, req.Latitude, req.Longitude, DateTime.UtcNow));
-        await SaveQueue(queueKey, queue, ct);
+        // No partner — add self to this shard's queue
+        var ownKey = QueueKey(userCell, category);
+        var ownJson = await cache.GetStringAsync(ownKey, ct);
+        var ownQueue = ownJson is not null
+            ? JsonSerializer.Deserialize<List<WaitingEntry>>(ownJson) ?? []
+            : new List<WaitingEntry>();
+
+        ownQueue.RemoveAll(e => e.UserId == userId);
+        ownQueue.Add(new WaitingEntry(userId, req.Latitude, req.Longitude, userCell.ToString(), DateTime.UtcNow));
+        await SaveQueue(ownKey, ownQueue, ct);
+
+        // GDPR: record approximate user location at res 9 for later pseudonymization
+        var profile = await db.UserProfiles.FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        if (profile is not null)
+        {
+            profile.LastKnownH3 = H3Index.FromPoint(center, 9).ToString();
+            profile.LastKnownH3CapturedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+        }
 
         return new MatchResponse("searching", null, "Looking for a partner, you'll be notified.");
+    }
+
+    private async Task<(WaitingEntry? partner, string queueKey)> FindPartnerAsync(
+        H3Index cell, string category, int userId, CancellationToken ct)
+    {
+        var key = QueueKey(cell, category);
+        var json = await cache.GetStringAsync(key, ct);
+        if (json is null) return (null, key);
+
+        var queue = JsonSerializer.Deserialize<List<WaitingEntry>>(json) ?? [];
+        queue.RemoveAll(e => (DateTime.UtcNow - e.EnqueuedAt).TotalMinutes > 5);
+
+        var partner = queue.FirstOrDefault(e => e.UserId != userId);
+        return (partner, key);
+    }
+
+    private async Task RemoveFromQueue(string queueKey, int userId, CancellationToken ct)
+    {
+        var json = await cache.GetStringAsync(queueKey, ct);
+        if (json is null) return;
+        var queue = JsonSerializer.Deserialize<List<WaitingEntry>>(json) ?? [];
+        queue.RemoveAll(e => e.UserId == userId);
+        await SaveQueue(queueKey, queue, ct);
     }
 
     private async Task SaveQueue(string key, List<WaitingEntry> queue, CancellationToken ct)
@@ -115,7 +151,12 @@ public class MatchService(SynapseDbContext db, IDistributedCache cache, Geometry
         await cache.SetStringAsync(key, JsonSerializer.Serialize(queue), options, ct);
     }
 
-    private static string QueueKey(string category) => $"{QueueKeyPrefix}{category.ToLowerInvariant()}";
+    private static string QueueKey(H3Index cell, string category)
+        => $"match:queue:{cell}:{category.ToLowerInvariant()}";
 
-    private record WaitingEntry(int UserId, double Latitude, double Longitude, DateTime EnqueuedAt);
+    // Overload for cases where cell string is pre-extracted
+    private static string QueueKey(object? ring, string cell, string category)
+        => $"match:queue:{cell}:{category.ToLowerInvariant()}";
+
+    private record WaitingEntry(int UserId, double Latitude, double Longitude, string H3Cell, DateTime EnqueuedAt);
 }

@@ -7,6 +7,7 @@ import { queryClient } from '@/lib/queryClient';
 import BottomNavigation from '@/components/layout/BottomNavigation';
 import NotificationBell from '@/components/layout/NotificationBell';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
+import TenantProvider from '@/components/TenantProvider';
 import { Toaster } from 'sonner';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -49,6 +50,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <QueryClientProvider client={queryClient}>
+      <TenantProvider>
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/30 to-slate-900">
         {!isAuthPage && (
           <div className="fixed top-4 right-4 z-50 flex items-center gap-3">
@@ -93,6 +95,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       {process.env.NODE_ENV === 'development' && (
         <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
       )}
+      </TenantProvider>
     </QueryClientProvider>
   );
 }

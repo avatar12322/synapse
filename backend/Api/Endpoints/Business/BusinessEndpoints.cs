@@ -7,6 +7,7 @@ using Synapse.Core.Models.Business;
 using NetTopologySuite.Geometries;
 using Microsoft.EntityFrameworkCore;
 using BCrypt.Net;
+using System.Text;
 
 namespace Synapse.Api.Endpoints.Business;
 
@@ -103,9 +104,12 @@ public static class BusinessEndpoints
             void UpsertVenue(string name, string address, string category, Coordinate coord) {
                 var b = existingVenues.FirstOrDefault(x => x.Name == name);
                 if (b == null) {
+                    var location = gf.CreatePoint(coord);
+                    location.SRID = 4326;
                     db.Businesses.Add(new Synapse.Core.Models.Business.Business {
                         Name = name, Address = address, City = "Kraków", Category = category,
-                        Location = gf.CreatePoint(coord), OwnerId = owner.Id, IsActive = true
+                        Location = location, OwnerId = owner.Id, IsActive = true,
+                        NfcSecret = Convert.ToBase64String(Encoding.UTF8.GetBytes("test_nfc_secret_1234567890123456"))
                     });
                 } else {
                     b.IsActive = true;

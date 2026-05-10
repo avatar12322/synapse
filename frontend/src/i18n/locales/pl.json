@@ -30,7 +30,9 @@
     "missions": "Misje",
     "friends": "Znajomi",
     "profile": "Profil",
-    "verify": "Weryfikacja"
+    "verify": "Weryfikacja",
+    "reputation": "Reputacja",
+    "settings": "Ustawienia"
   },
   "home": {
     "title": "Twoje misje",
@@ -108,7 +110,33 @@
     "interestTags": "Wspólne zainteresowania",
     "description": "Opis misji",
     "copiedCode": "Kod skopiowany!",
-    "tapToCopy": "Dotknij, aby skopiować"
+    "tapToCopy": "Dotknij, aby skopiować",
+    "scanNfc": "Zeskanuj NFC",
+    "partnerNearby": "Partner jest w pobliżu",
+    "partnerAway": "Partner oddalił się"
+  },
+  "reputation": {
+    "title": "Reputacja",
+    "level": "Poziom",
+    "points": "punktów",
+    "totalPoints": "Łączna liczba punktów",
+    "nextLevel": "Do następnego poziomu",
+    "maxLevel": "Maksymalny poziom!",
+    "noTransactions": "Brak historii punktów. Ukończ pierwszą misję!",
+    "transactionsTitle": "Historia punktów",
+    "reasons": {
+      "MissionCompleted": "Ukończona misja",
+      "NfcVerification": "Weryfikacja NFC",
+      "FirstMission": "Pierwsza misja",
+      "Streak": "Seria misji"
+    },
+    "levels": {
+      "1": "Nowicjusz",
+      "2": "Poszukiwacz",
+      "3": "Odkrywca",
+      "4": "Weteran",
+      "5": "Legenda"
+    }
   },
   "business": {
     "verifyTitle": "Weryfikacja misji",
@@ -119,6 +147,16 @@
     "success": "Misja zweryfikowana!",
     "successSubtext": "Misja #{{id}} jest ukończona. Prowizja zostanie przetworzona automatycznie.",
     "error": "Nieprawidłowy lub wygasły kod, lub minimalny czas blokady nie został osiągnięty.",
-    "panelTitle": "Panel biznesu"
+    "panelTitle": "Panel biznesu",
+    "settingsTitle": "Ustawienia biznesu",
+    "stripeOnboarding": "Konfiguracja płatności (Stripe)",
+    "stripeOnboardButton": "Połącz ze Stripe",
+    "stripeStatusEnabled": "Płatności aktywne",
+    "stripeStatusDisabled": "Płatności nieaktywne",
+    "editProfile": "Edytuj profil",
+    "businessName": "Nazwa firmy",
+    "businessAddress": "Adres",
+    "businessCity": "Miasto",
+    "saveChanges": "Zapisz zmiany"
   }
 }

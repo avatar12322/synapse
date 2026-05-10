@@ -12,6 +12,8 @@ class Settings(BaseSettings):
 
     reasoning_model: str = "gemini-2.5-flash"
     fast_model: str = "gemini-2.5-flash"
+    # Phase 4: for calling /api/internal/profile/embedding (TEE-ready encryption)
+    internal_api_secret: str = ""
 
 
 settings = Settings()

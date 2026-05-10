@@ -74,6 +74,12 @@ public static class AuthEndpoints
             user.RefreshToken = refreshToken;
             user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
             user.LastLoginAt = DateTime.UtcNow;
+            // Anti-Sybil: capture device signals on each login
+            user.LastKnownIp = httpContext.Connection.RemoteIpAddress?.ToString();
+            var fp = httpContext.Request.Headers["X-Device-Fingerprint"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(fp)) user.DeviceFingerprint = fp;
+            var bssid = httpContext.Request.Headers["X-Device-Bssid"].FirstOrDefault();
+            if (!string.IsNullOrEmpty(bssid)) user.LastKnownBssid = bssid;
             await db.SaveChangesAsync();
 
             var accessToken = authService.GenerateJwtToken(user);

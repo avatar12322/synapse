@@ -7,12 +7,14 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft, MapPin, Lock, CheckCircle2, Clock, Zap, Copy,
-  AlertCircle, Loader2, XCircle, Tag
+  AlertCircle, Loader2, XCircle, Tag, Radio
 } from 'lucide-react';
 import { missionApi, Mission } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { usePresence } from '@/hooks/usePresence';
+import { authStorage } from '@/lib/auth';
 
 function formatElapsed(lockedAt: string): string {
   const elapsedMs = Date.now() - new Date(lockedAt).getTime();
@@ -85,12 +87,15 @@ function PendingState({ mission, onAccept, onCancel, isMutating }: {
   );
 }
 
-function InProgressState({ mission, onCancel, isMutating }: {
+function InProgressState({ mission, onCancel, onVerifyNfc, isMutating }: {
   mission: Mission;
   onCancel: () => void;
+  onVerifyNfc: () => void;
   isMutating: boolean;
 }) {
   const { t } = useTranslation();
+  const user = authStorage.getUser();
+  const { isPartnerNearby } = usePresence(mission.id, user?.id || 0);
   const [elapsed, setElapsed] = useState('0:00');
   const [copied, setCopied] = useState(false);
 
@@ -134,6 +139,16 @@ function InProgressState({ mission, onCancel, isMutating }: {
         </CardContent>
       </Card>
 
+      {/* Partner Presence */}
+      <Card className={`border transition-colors ${isPartnerNearby ? 'bg-blue-900/20 border-blue-500/40' : 'bg-slate-900/20 border-slate-700'}`}>
+        <CardContent className="p-3 flex items-center justify-center gap-3">
+          <div className={`h-2 w-2 rounded-full animate-pulse ${isPartnerNearby ? 'bg-blue-400' : 'bg-gray-500'}`} />
+          <p className={`text-sm font-bold ${isPartnerNearby ? 'text-blue-300' : 'text-gray-500'}`}>
+            {isPartnerNearby ? t('missionDetail.partnerNearby') : t('missionDetail.partnerAway')}
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Google Maps */}
       <a
         href={mapsUrl(mission.businessLatitude, mission.businessLongitude, mission.businessName)}
@@ -145,6 +160,16 @@ function InProgressState({ mission, onCancel, isMutating }: {
           {t('missionDetail.goToVenue')}
         </Button>
       </a>
+
+      {/* NFC Verification */}
+      <Button
+        onClick={onVerifyNfc}
+        disabled={isMutating}
+        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-6 text-lg gap-2"
+      >
+        <Radio className="h-5 w-5" />
+        {t('missionDetail.scanNfc')}
+      </Button>
 
       {/* Verification code */}
       {mission.verificationCode && (
@@ -250,8 +275,22 @@ export default function MissionDetailClient() {
     onSuccess: () => { invalidate(); router.push('/missions'); },
   });
 
-  const isMutating = acceptMutation.isPending || cancelMutation.isPending;
-  const mutationError = acceptMutation.error || cancelMutation.error;
+  const verifyNfcMutation = useMutation({
+    mutationFn: () => {
+      const payload = JSON.stringify({
+        v: 1,
+        bid: mission!.businessId.toString(),
+        mid: mission!.id.toString(),
+        ts: Math.floor(Date.now() / 1000),
+        sig: "mock_sig"
+      });
+      return missionApi.verifyNfc(missionId, payload);
+    },
+    onSuccess: invalidate,
+  });
+
+  const isMutating = acceptMutation.isPending || cancelMutation.isPending || verifyNfcMutation.isPending;
+  const mutationError = acceptMutation.error || cancelMutation.error || verifyNfcMutation.error;
 
   if (isLoading) {
     return (
@@ -355,6 +394,7 @@ export default function MissionDetailClient() {
           <InProgressState
             mission={mission}
             onCancel={() => cancelMutation.mutate()}
+            onVerifyNfc={() => verifyNfcMutation.mutate()}
             isMutating={isMutating}
           />
         )}

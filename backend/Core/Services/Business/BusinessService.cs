@@ -1,3 +1,4 @@
+using H3;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.Geometries;
 using Synapse.Core.DTOs.Business;
@@ -55,6 +56,7 @@ public class BusinessService(SynapseDbContext db, GeometryFactory gf) : IBusines
             Address = req.Address,
             City = req.City,
             Location = point,
+            H3Index = H3Index.FromPoint(point, 6).ToString(),
             Category = req.Category,
             Description = req.Description,
             DefaultDiscountPercent = req.DefaultDiscountPercent,
@@ -84,6 +86,7 @@ public class BusinessService(SynapseDbContext db, GeometryFactory gf) : IBusines
             var point = gf.CreatePoint(new Coordinate(req.Longitude.Value, req.Latitude.Value));
             point.SRID = 4326;
             business.Location = point;
+            business.H3Index = H3Index.FromPoint(point, 6).ToString();
         }
 
         await db.SaveChangesAsync(ct);

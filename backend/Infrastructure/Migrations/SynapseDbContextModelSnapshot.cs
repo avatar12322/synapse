@@ -58,6 +58,10 @@ namespace Synapse.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<string>("H3Index")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -88,17 +92,24 @@ namespace Synapse.Infrastructure.Migrations
                     b.Property<bool>("StripeOnboardingComplete")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Category");
 
                     b.HasIndex("City");
 
+                    b.HasIndex("H3Index");
+
                     b.HasIndex("Location");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Location"), "GIST");
 
                     b.HasIndex("OwnerId");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("Businesses");
                 });
@@ -118,6 +129,9 @@ namespace Synapse.Infrastructure.Migrations
                     b.Property<string>("ErrorMessage")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<int>("InvoiceType")
+                        .HasColumnType("integer");
 
                     b.Property<string>("KsefReferenceNumber")
                         .HasMaxLength(100)
@@ -150,6 +164,9 @@ namespace Synapse.Infrastructure.Migrations
 
                     b.Property<string>("UpoXml")
                         .HasColumnType("text");
+
+                    b.Property<decimal>("VatRatePct")
+                        .HasColumnType("decimal(5,4)");
 
                     b.HasKey("Id");
 
@@ -345,6 +362,94 @@ namespace Synapse.Infrastructure.Migrations
                     b.ToTable("Friendships");
                 });
 
+            modelBuilder.Entity("Synapse.Core.Models.Tenant.Tenant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomDomain")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LogoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("PrimaryColor")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
+
+                    b.Property<string>("SecondaryColor")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<decimal>("VatRatePct")
+                        .HasColumnType("decimal(5,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomDomain");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("Tenants");
+                });
+
+            modelBuilder.Entity("Synapse.Core.Models.User.ReputationTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("MissionId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Points")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Reason")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserReputationId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserReputationId", "CreatedAt");
+
+                    b.ToTable("ReputationTransactions");
+                });
+
             modelBuilder.Entity("Synapse.Core.Models.User.User", b =>
                 {
                     b.Property<int>("Id")
@@ -356,6 +461,10 @@ namespace Synapse.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("DeviceFingerprint")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -365,6 +474,14 @@ namespace Synapse.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
+
+                    b.Property<string>("LastKnownBssid")
+                        .HasMaxLength(17)
+                        .HasColumnType("character varying(17)");
+
+                    b.Property<string>("LastKnownIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
 
                     b.Property<DateTime>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
@@ -415,8 +532,18 @@ namespace Synapse.Infrastructure.Migrations
                     b.Property<Vector>("Embedding")
                         .HasColumnType("vector(768)");
 
+                    b.Property<byte[]>("EncryptedEmbedding")
+                        .HasColumnType("bytea");
+
                     b.Property<string>("InterestTags")
                         .HasColumnType("text");
+
+                    b.Property<string>("LastKnownH3")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime?>("LastKnownH3CapturedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("LastProfiledAt")
                         .HasColumnType("timestamp with time zone");
@@ -441,6 +568,37 @@ namespace Synapse.Infrastructure.Migrations
                     b.ToTable("UserProfiles");
                 });
 
+            modelBuilder.Entity("Synapse.Core.Models.User.UserReputation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RepLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TotalPoints")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserReputations");
+                });
+
             modelBuilder.Entity("Synapse.Core.Models.Business.Business", b =>
                 {
                     b.HasOne("Synapse.Core.Models.User.User", "Owner")
@@ -449,7 +607,14 @@ namespace Synapse.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Synapse.Core.Models.Tenant.Tenant", "Tenant")
+                        .WithMany("Businesses")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Owner");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("Synapse.Core.Models.Invoice.KsefInvoice", b =>
@@ -518,7 +683,29 @@ namespace Synapse.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Synapse.Core.Models.User.ReputationTransaction", b =>
+                {
+                    b.HasOne("Synapse.Core.Models.User.UserReputation", "UserReputation")
+                        .WithMany("Transactions")
+                        .HasForeignKey("UserReputationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UserReputation");
+                });
+
             modelBuilder.Entity("Synapse.Core.Models.User.UserProfile", b =>
+                {
+                    b.HasOne("Synapse.Core.Models.User.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Synapse.Core.Models.User.UserReputation", b =>
                 {
                     b.HasOne("Synapse.Core.Models.User.User", "User")
                         .WithMany()
@@ -536,11 +723,21 @@ namespace Synapse.Infrastructure.Migrations
                     b.Navigation("Missions");
                 });
 
+            modelBuilder.Entity("Synapse.Core.Models.Tenant.Tenant", b =>
+                {
+                    b.Navigation("Businesses");
+                });
+
             modelBuilder.Entity("Synapse.Core.Models.User.User", b =>
                 {
                     b.Navigation("InitiatedFriendships");
 
                     b.Navigation("ReceivedFriendships");
+                });
+
+            modelBuilder.Entity("Synapse.Core.Models.User.UserReputation", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }
